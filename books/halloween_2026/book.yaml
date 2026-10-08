@@ -1,0 +1,51 @@
+book_id: halloween_2026
+publisher: "LaFractale Édition"
+collection: "Je joue, j'apprends !"
+title: "Mon Halloween bilingue avec Pip"
+status: planning
+language_primary: fr
+language_secondary: en
+audience:
+  age_min: 4
+  age_max: 5
+trim:
+  width_in: 8.5
+  height_in: 11
+interior:
+  pages: 56
+  ink: black_and_white
+  bleed: to_be_confirmed
+cover:
+  ink: color
+  template: pending_kdp_calculation
+mascot:
+  name: Pip
+  approved_reference: assets/characters/pip/pip_officiel_couleur.png
+  require_bow_tie: true
+story:
+  premise: "Pip prépare sa première fête d'Halloween. L'enfant l'aide à retrouver ses décorations, ses invités et ses bonbons."
+  chapters: 5
+vocabulary:
+  fantôme: ghost
+  citrouille: pumpkin
+  chauve-souris: bat
+  chat: cat
+  lune: moon
+  étoile: star
+  chapeau: hat
+  balai: broom
+  araignée: spider
+  toile d'araignée: spiderweb
+  sorcière: witch
+  monstre: monster
+  hibou: owl
+  maison: house
+  bonbon: candy
+  nuit: night
+  porte: door
+  sac: bag
+quality:
+  exact_pages: true
+  alternate_activity_type: true
+  require_validated_answers: true
+  required_human_visual_review: true

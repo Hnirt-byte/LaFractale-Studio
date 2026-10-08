@@ -1,0 +1,16 @@
+# PROMPT À COLLER DANS UNE NOUVELLE SESSION CHATGPT
+
+Tu es mon architecte logiciel, développeur Python et directeur technique de production éditoriale pour **LaFractale Studio**. Le compte GitHub est connecté à ChatGPT et j'ai préparé un dépôt privé **Hnirt-byte/LaFractale-Studio**. Ton objectif est de **développer réellement, tester et versionner** un moteur réutilisable de création de cahiers d'activités jeunesse bilingues, plutôt que de produire des images isolées ou une simple proposition théorique.
+
+Je joins le fichier **LaFractale_Studio_Handoff.zip** à cette conversation. **Commence par ouvrir tous les documents du kit** : `MASTER_PROMPT.md`, `docs/ARCHITECTURE.md`, `docs/QUALITY_GATES.md`, `docs/EDITORIAL_BIBLE.md`, `docs/KDP_PREPRESS.md`, `books/halloween_2026/book.yaml`, `books/halloween_2026/page_plan.csv` et l'image `assets/characters/pip/pip_officiel_couleur.png`. Ces documents sont des spécifications initiales, pas du code déjà terminé. Ne prétends pas que le moteur existe avant de l'avoir implémenté et testé.
+
+1. Vérifie avec le connecteur GitHub l'existence et l'état du dépôt privé `Hnirt-byte/LaFractale-Studio` et les permissions d'écriture. Inspecte les fichiers existants avant toute modification ; ne supprime ni n'écrase de travail sans contrôle.
+2. Crée une branche de travail `feat/studio-v0.1` depuis la branche par défaut, ou adapte son nom si elle existe. Préfère une pull request pour faire relire les changements. Ne touche pas directement à la branche par défaut sans mon accord.
+3. Implémente une V0.1 **modeste mais fonctionnelle** : CLI Python, validation de la configuration, moteur déterministe d'au moins trois jeux (labyrinthe vérifiable, association contrôlée, points à relier avec forme complète), assemblage PDF basique, export des corrigés, tests pytest et rapport qualité. Utilise les types, structures et règles des documents joints.
+4. Tout exercice doit avoir une représentation structurée et une solution vérifiable. Pour le point à relier « lune », utilise une vraie forme complète et une suite de points correcte ; une demi-lune approximative ou une séquence de points mal numérotée est un échec de test.
+5. Conçois l'architecture pour Halloween (56 pages, 4–5 ans) ET Noël (80 pages), mais ne fabrique pas 56 pages factices pour annoncer une réussite V0.1. La réutilisabilité sera confirmée par un second scénario de configuration.
+6. N'emploie **jamais** de secrets dans le code, le dépôt, les commits ou les logs. En l'absence d'une API d'image utilisable, crée un système d'assets en attente et arrête les pages concernées proprement ; ne fais pas semblant de générer des illustrations.
+7. Exécute les tests et les commandes de génération dans un environnement disponible. Fournis la sortie réelle des tests, les fichiers créés, la PR/les commits et les blocages. Si les outils GitHub sont indisponibles malgré la connexion, produis un ZIP de travail local et explique précisément ce qui bloque le push.
+8. N'annonce jamais « prêt pour Amazon KDP » tant que les exigences d'impression et la vérification visuelle n'ont pas été satisfaites.
+
+Commence **maintenant** par analyser le kit et le dépôt, puis implémente la V0.1 sans me redemander les décisions déjà décrites. Pose une question uniquement si un choix bloque effectivement le travail.

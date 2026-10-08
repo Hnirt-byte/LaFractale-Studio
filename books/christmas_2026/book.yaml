@@ -1,0 +1,54 @@
+# Second independent scenario. 80 pages are PLANNED, not manufactured.
+book_id: christmas_2026
+publisher: "LaFractale Édition"
+collection: "Je joue, j'apprends !"
+title: "Mon Noël bilingue avec Pip"
+status: planning
+language_primary: fr
+language_secondary: en
+audience:
+  age_min: 4
+  age_max: 5
+trim:
+  width_in: 8.5
+  height_in: 11
+interior:
+  pages: 80
+  ink: black_and_white
+  bleed: to_be_confirmed
+cover:
+  ink: color
+  template: pending_kdp_calculation
+mascot:
+  name: Pip
+  approved_reference: assets/characters/pip/pip_officiel_couleur.png
+  require_bow_tie: true
+vocabulary:
+  étoile: star
+  lune: moon
+  maison: house
+  cadeau: gift
+  sapin: tree
+  neige: snow
+story:
+  premise: "Pip prépare une fête d'hiver avec ses amis."
+  chapters: 5
+quality:
+  exact_pages: true
+  alternate_activity_type: true
+  require_validated_answers: true
+  required_human_visual_review: true
+demo_activities:
+  - page: 4
+    type: maze
+    scene: "Pip cherche un chemin dans la neige"
+    vocabulary: [neige]
+  - page: 8
+    type: connect_dots
+    scene: "Une étoile pour le sapin"
+    vocabulary: [étoile]
+    shape: star
+  - page: 12
+    type: match
+    scene: "Les formes des cadeaux"
+    vocabulary: [cadeau]

@@ -1,0 +1,57 @@
+page,chapter,story_beat,activity_type,vocabulary,status
+1,Ouverture,Page de titre,front_matter,Présentation,draft
+2,Ouverture,Bienvenue et guide parents,front_matter,Mission de Pip,draft
+3,Invitation,Pip reçoit une invitation,coloring,ghost,draft
+4,Invitation,La citrouille bloque le chemin,maze,pumpkin,draft
+5,Invitation,Qui est dans le jardin ?,find_count,bat;cat,draft
+6,Invitation,La lune mystérieuse,connect_dots,moon,draft
+7,Invitation,L’ombre de la citrouille,shadow_match,pumpkin,draft
+8,Invitation,Décore l’invitation,creative_color,star,draft
+9,Invitation,Les chemins de Pip,trace_paths,ghost,draft
+10,Invitation,Compte les chauves-souris,count,bat,draft
+11,Invitation,Les mots de Pip,match_vocabulary,ghost;cat,draft
+12,Invitation,L’indice caché,spot_differences,moon,draft
+13,Forêt,La forêt magique,coloring,night,draft
+14,Forêt,Le chemin des étoiles,maze,star,draft
+15,Forêt,Le hibou et les décorations,find_count,owl,draft
+16,Forêt,La guirlande incomplète,pattern,star,draft
+17,Forêt,La maison au loin,connect_dots,house,draft
+18,Forêt,Le chat au chapeau,coloring,cat;hat,draft
+19,Forêt,Les traces du balai,trace_paths,broom,draft
+20,Forêt,À qui est ce chapeau ?,match,hat,draft
+21,Forêt,Les araignées,count,spider,draft
+22,Forêt,La toile mystérieuse,path_logic,spiderweb,draft
+23,Amis,La gentille sorcière,coloring,witch;house,draft
+24,Amis,Le balai disparu,find_count,broom,draft
+25,Amis,Pip rencontre le monstre,maze,monster,draft
+26,Amis,La potion des étoiles,pattern,star,draft
+27,Amis,Les chapeaux des amis,match,hat,draft
+28,Amis,Le monstre souriant,creative_color,monster,draft
+29,Amis,Les invitations des amis,trace_paths,house,draft
+30,Amis,Combien d’amis ?,count,cat;owl,draft
+31,Amis,Retrouve les objets identiques,pair_matching,broom;hat,draft
+32,Amis,Les mots des amis,match_vocabulary,witch;monster;owl,draft
+33,Bonbons,Le sac magique,coloring,bag;candy,draft
+34,Bonbons,Le chemin des bonbons,maze,candy,draft
+35,Bonbons,Les bonbons cachés,find_count,candy,draft
+36,Bonbons,La guirlande de friandises,pattern,candy,draft
+37,Bonbons,Les bonbons et leurs sacs,sort,bag,draft
+38,Bonbons,Pip rentre à la maison,trace_paths,ghost,draft
+39,Bonbons,La porte décorée,coloring,door,draft
+40,Bonbons,Un bonbon pour chacun,one_to_one,candy,draft
+41,Bonbons,Les portes mystérieuses,shadow_match,door,draft
+42,Bonbons,Le sac de Pip,match_vocabulary,bag;candy;door,draft
+43,Fête,Les invités arrivent,maze,ghost,draft
+44,Fête,La grande chasse aux objets,find_count,revision,draft
+45,Fête,Les étoiles de la fête,connect_dots,star,draft
+46,Fête,Qui apporte quoi ?,match,revision,draft
+47,Fête,La fête de mes rêves,creative_color,halloween,draft
+48,Fête,Les dernières énigmes,mini_logic,pumpkin;candy,draft
+49,Fête,Je reconnais les mots,match_vocabulary,revision,draft
+50,Fête,Bravo ! Diplôme,diploma,well_done,draft
+51,Fin,Corrigés 1,answers,,draft
+52,Fin,Corrigés 2,answers,,draft
+53,Fin,Corrigés 3,answers,,draft
+54,Fin,Corrigés 4,answers,,draft
+55,Fin,Lexique illustré,glossary,all,draft
+56,Fin,À bientôt avec Pip,back_matter,,draft
