@@ -1,8 +1,9 @@
-"""Inventory approved references without editing the official Pip source."""
+"""Inventory per-book approved companion references, without modifying originals."""
 from __future__ import annotations
 import hashlib
 from pathlib import Path
-from lafractale.config.schema import Book, ConfigError, within_root
+from lafractale.config.schema import Book, verify_book_snapshot
+from lafractale.config.companions import verify_companion_integrity
 
 
 def sha256(path: Path) -> str:
@@ -14,14 +15,13 @@ def sha256(path: Path) -> str:
 
 
 def registry(book: Book) -> list[dict]:
-    mascot = book.data.get("mascot", {})
-    reference = mascot.get("approved_reference")
-    if not reference:
+    verify_book_snapshot(book)
+    verify_companion_integrity(book.root, book.book_id, book.companion)
+    companion = book.companion
+    if not companion.selected:
         return []
-    target = within_root(book.root, reference)
-    if not target.is_file():
-        raise ConfigError(f"Asset manquant : {reference}")
-    return [{"path": reference, "sha256": sha256(target),
+    return [{"id": companion.id, "name": companion.render_name,
+             "path": companion.reference, "sha256": companion.sha256,
              "approval": "APPROVED_REFERENCE", "rights": "UNVERIFIED",
-             "use": "REFERENCE_ONLY", "bow_tie_required": mascot.get("require_bow_tie", False),
+             "use": "REFERENCE_ONLY", "visual_constraints": list(companion.visual_constraints),
              "bw_variant": "PENDING_HUMAN_APPROVAL"}]

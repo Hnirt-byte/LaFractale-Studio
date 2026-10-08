@@ -12,7 +12,8 @@
 - Rendu : aucune sortie de zone sûre, fontes intégrées, résolution effective suffisante, transparences et fonds perdus contrôlés.
 
 ## Obligatoires humains (non automatisables parfaitement)
-- Pip réellement fidèle au portrait officiel; noeud papillon visible sur vues de face.
+- Compagnon fidèle à sa référence officielle propre au livre. Pour Halloween uniquement : Pip fidèle au portrait officiel, nœud papillon visible sur vues de face.
+- Livre sans compagnon approuvé ou personnage réutilisé hors de son univers : publication bloquée.
 - Compréhension enfant 4–5 ans, lisibilité, simplicité de la consigne.
 - Activité plaisante, forme connect-the-dots satisfaisante, durée adaptée, difficulté graduée.
 - Orthographe, traductions et pertinence de l'histoire.

@@ -3,15 +3,18 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 import fitz
 
 from lafractale import __version__
-from lafractale.config.schema import Book, ConfigError, validate_plan_vocabulary
+from lafractale.config.schema import Book, ConfigError, validate_plan_vocabulary, verify_book_snapshot
 from lafractale.story.plan import demo_specs, full_build_blockers
 from lafractale.activities.engine import generate, stable_seed
 from lafractale.assets.registry import registry, sha256
+from lafractale.config.companions import verify_companion_text
 from lafractale.quality.checks import validate_collection
 from lafractale.layout.pdf import write_pdf
 
@@ -26,7 +29,9 @@ def _timestamp() -> str:
     return datetime.fromtimestamp(int(value), timezone.utc).isoformat() if value else datetime.now(timezone.utc).isoformat()
 
 
-def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
+def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026) -> dict:
+    verify_companion_text(book.root, book.companion, book.data, book.plan)
+    verify_book_snapshot(book)
     errors = validate_plan_vocabulary(book)
     if errors:
         raise ConfigError("\n".join(errors))
@@ -36,6 +41,7 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
     if errors:
         raise ConfigError("Exercices invalides :\n" + "\n".join(errors))
     assets=registry(book)
+    companion=book.companion
     # Build in destination only after all structural blockers have passed.
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     interior=out/"interior.pdf";answers=out/"answer_key.pdf"
@@ -54,6 +60,7 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
     dump_json(out/"activities.json",[a.as_dict() for a in activities])
     report={
         "book_id":book.book_id,"engine_version":__version__,"kind":"TECHNICAL_DEMO_ONLY",
+        "companion":{"status":companion.status,"id":companion.id,"name":companion.render_name},
         "auto_checks":{"pass":True,"errors":[],"activity_count":len(activities),
                        "expected_demo_pages":len(activities),"checked_types":sorted({a.type for a in activities})},
         "page_results":[{"id":a.id,"source_page":a.page,"mechanic":a.type,
@@ -61,7 +68,8 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
                          "human_approval":"pending"} for a in activities],
         "blocking_for_publication":[
             "Fiches non revues visuellement et pédagogiquement",
-            "Variante N&B de Pip et illustrations non validées (Pip non dessiné dans la démo)",
+            (f"Variantes graphiques de {companion.render_name} non approuvées (référence non dessinée)"
+             if companion.selected else "Compagnon non sélectionné : illustrations en attente"),
             "Droits de la référence graphique non documentés" if assets else "Assets graphiques non validés",
             "Plan de pages intégral non implémenté",
             "Contrôles KDP Print Previewer et épreuve physique non réalisés"],
@@ -77,14 +85,62 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
     (out/"quality_report.md").write_text("\n".join(lines),encoding="utf-8")
     plan_file=book.path.with_name("page_plan.csv")
     manifest={"engine_version":__version__,"generated_at_utc":_timestamp(),"book_id":book.book_id,
+              "companion":{"status":companion.status,"id":companion.id,"name":companion.render_name},
               "target_pages":book.pages,"demo_pages":len(activities),"seed":seed,
               "source":{"book_config":str(book.path.relative_to(book.root)),"book_config_sha256":sha256(book.path),
                         "page_plan_sha256":sha256(plan_file) if plan_file.exists() else None},
               "assets":assets,"activities":[{"id":a.id,"page":a.page,"seed":a.seed} for a in activities],
               "outputs":{p:sha256(out/p) for p in ("interior.pdf","answer_key.pdf","activities.json","quality_report.json")},
               "publication_approved":False}
+    # Re-read the approved source at the last publication-adjacent step: a
+    # post-load or mid-build mutation must never yield a trusted manifest.
+    verify_companion_text(book.root, book.companion, book.data, book.plan)
+    verify_book_snapshot(book)
+    if registry(book) != assets:
+        raise ConfigError("Compagnon modifié pendant la génération")
     dump_json(out/"manifest.json",manifest)
     return report
+
+
+def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
+    """Generate in a private staging directory, publish only after passing QA.
+
+    Mid-render mutations must not leave a partially rendered book (or a fake
+    success manifest) in the user-visible destination. An existing valid demo
+    stays unchanged if validation fails.
+    """
+    out = Path(os.path.abspath(out))
+    if out.is_symlink() or (out.exists() and not out.is_dir()):
+        raise ConfigError("Répertoire de sortie invalide ou symlink interdit")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix=f".{out.name}.build-", dir=out.parent))
+    backup: Path | None = None
+    try:
+        report = _build_demo_unpublished(book, stage, seed=seed)
+        errors = audit_output(stage)
+        if errors:
+            raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
+        # After the last validation, the original output is not touched until
+        # a complete and audited directory is ready to be swapped in.
+        if out.is_symlink() or (out.exists() and not out.is_dir()):
+            raise ConfigError("Répertoire de sortie modifié pendant la génération")
+        if out.exists():
+            backup = Path(tempfile.mkdtemp(prefix=f".{out.name}.previous-", dir=out.parent))
+            backup.rmdir()
+            os.replace(out, backup)
+        try:
+            os.replace(stage, out)
+        except OSError:
+            if backup is not None:
+                os.replace(backup, out)
+                backup = None
+            raise
+        return report
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+        if backup is not None and backup.exists():
+            shutil.rmtree(backup)
 
 
 def audit_output(out: Path) -> list[str]:

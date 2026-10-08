@@ -18,7 +18,8 @@ class ActivitySpec:
     asset_refs: tuple[str, ...] = ()
     pedagogy: str = "Observation et motricité fine"
     difficulty: str = "débutant"
-    pip_pose: str = "not_rendered"
+    companion_pose: str = "not_rendered"
+    companion_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,8 @@ class Activity:
     seed: int
     pedagogy: str
     difficulty: str
-    pip_pose: str
+    companion_pose: str
+    companion_name: str | None = None
     graphic_status: str = "needs_visual_review"
 
     def as_dict(self) -> dict[str, Any]:

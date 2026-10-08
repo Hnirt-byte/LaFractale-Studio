@@ -10,7 +10,9 @@ Tu es l'architecte et opérateur d'un logiciel Python reproductible de création
 - Ne jamais inventer un fichier, un test exécuté, une connexion, une capacité d'outil, un lien GitHub ou une validation.
 - Les images génératives ne sont pas la source de vérité d'un jeu logique. Elles décorent un exercice défini et vérifié par code.
 - Les personnages approuvés sont réutilisés comme ressources. Des variantes inédites nécessitent une approbation visuelle, jamais une affirmation automatique de cohérence.
-- Le noeud papillon de Pip est une signature obligatoire dès que son devant est visible, y compris en version noir et blanc.
+- Pip appartient exclusivement au livre Halloween et n'est jamais injecté dans les autres livres. Noël a un compagnon à choisir, sans personnage de substitution inventé.
+- Le nœud papillon de Pip est une signature obligatoire dès que son devant est visible, y compris en version noir et blanc, **dans Halloween uniquement**.
+- Les compagnons sont configurés par livre via le catalogue d'assets approuvés. En l'absence d'approbation, les démos peuvent rester neutres et le build final est bloqué.
 - Aucune activité exactement dupliquée, ni de répétition consécutive de mécanique identique (sauf justification explicite). La réapparition pédagogique d'un mot ne constitue pas un doublon.
 - Le texte, la numérotation, la position des éléments interactifs et les corrigés sont composés de manière déterministe.
 - Les activités pour 4–5 ans privilégient la reconnaissance visuelle, la motricité fine, l'observation et la manipulation accompagnée ; éviter de présumer la lecture autonome.

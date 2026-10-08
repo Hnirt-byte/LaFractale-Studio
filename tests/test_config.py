@@ -55,14 +55,14 @@ def test_non_string_vocabulary_value_is_a_controlled_config_error(tmp_path):
     assert main(["validate", str(config)]) == 2
 
 
-def test_null_mascot_and_non_string_title_are_controlled_cli_errors(tmp_path):
+def test_null_companion_and_non_string_title_are_controlled_cli_errors(tmp_path):
     source = ROOT / "books/christmas_2026/book.yaml"
     base = yaml.safe_load(source.read_text(encoding="utf-8"))
     (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     asset = tmp_path / "assets/characters/pip"
     asset.mkdir(parents=True)
     copy2(ROOT / "assets/characters/pip/pip_officiel_couleur.png", asset / "pip_officiel_couleur.png")
-    for name, field, value in (("null-mascot", "mascot", None), ("bad-title", "title", [])):
+    for name, field, value in (("null-companion", "companion", None), ("bad-title", "title", [])):
         data = dict(base)
         data[field] = value
         config = tmp_path / f"{name}.yaml"
@@ -76,6 +76,9 @@ def test_missing_asset_is_blocking(tmp_path):
     project=tmp_path/"project"; project.mkdir()
     (project/"pyproject.toml").write_text("[project]\n",encoding="utf-8")
     src=(ROOT/"books/halloween_2026/book.yaml").read_text(encoding="utf-8")
+    catalog = project / "assets/companions"
+    catalog.mkdir(parents=True)
+    copy2(ROOT / "assets/companions/catalog.yaml", catalog / "catalog.yaml")
     cfg=project/"book.yaml";cfg.write_text(src,encoding="utf-8")
     with pytest.raises(ConfigError,match="Asset officiel absent"):
         load_book(cfg)

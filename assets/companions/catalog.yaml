@@ -1,0 +1,14 @@
+# Catalogue des compagnons explicitement approuvés pour un ou plusieurs livres.
+# Ajouter un personnage ne nécessite aucune modification du moteur Python.
+# Chaque nouvelle entrée et chaque droit d’exploitation nécessitent une validation humaine.
+characters:
+  pip:
+    name: Pip
+    allowed_book_ids: [halloween_2026]
+    approved_reference: assets/characters/pip/pip_officiel_couleur.png
+    sha256: b54194f0cf3be821d38d08e2c7b9b177292b90175faa2180ccb34cdccd8e295c
+    visual_constraints:
+      - petit fantôme blanc
+      - yeux noirs brillants et joues pêche rosées
+      - nœud papillon orange visible de face
+    reference_only: true

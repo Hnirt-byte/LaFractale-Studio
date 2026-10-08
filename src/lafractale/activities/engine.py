@@ -124,7 +124,10 @@ def generate(spec: ActivitySpec, seed: int) -> Activity:
     rng = random.Random(seed)
     if spec.type == "maze":
         geometry, answer = generate_maze(rng)
-        fr, en = "Aide Pip à traverser le labyrinthe !", "Help Pip find the way!"
+        fr, en = ((f"Traverse le labyrinthe avec {spec.companion_name} !",
+                   f"Find a path through the maze with {spec.companion_name}!")
+                  if spec.companion_name else
+                  ("Trouve le chemin dans le labyrinthe !", "Find the path through the maze!"))
     elif spec.type == "match":
         vocab = {w.casefold() for w in spec.vocabulary}
         family = "hats" if vocab.intersection({"hat", "chapeau"}) else "gifts" if vocab.intersection({"gift", "cadeau"}) else "shapes"
@@ -138,4 +141,4 @@ def generate(spec: ActivitySpec, seed: int) -> Activity:
         fr, en = "Relie les points dans l'ordre, puis reviens au 1.", "Connect the dots in order, then return to 1."
     return Activity(spec.id, spec.page, spec.type, spec.age_band, spec.scene, spec.vocabulary,
                     fr, en, spec.asset_refs, geometry, answer, seed, spec.pedagogy,
-                    spec.difficulty, spec.pip_pose)
+                    spec.difficulty, spec.companion_pose, spec.companion_name)
