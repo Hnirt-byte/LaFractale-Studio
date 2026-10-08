@@ -18,10 +18,9 @@ interior:
 cover:
   ink: color
   template: pending_kdp_calculation
-mascot:
-  name: Pip
-  approved_reference: assets/characters/pip/pip_officiel_couleur.png
-  require_bow_tie: true
+companion:
+  status: approved_reference
+  id: pip
 story:
   premise: "Pip prépare sa première fête d'Halloween. L'enfant l'aide à retrouver ses décorations, ses invités et ses bonbons."
   chapters: 5

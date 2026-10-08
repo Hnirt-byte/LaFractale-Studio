@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
             if errors:
                 print("QA ÉCHEC :\n"+"\n".join(errors),file=sys.stderr);return 2
             print("QA TECHNIQUE OK | approbation visuelle et KDP toujours en attente");return 0
-        book=load_book(args.book,require_plan=args.cmd=="build")
+        book=load_book(args.book,require_plan=False)
         errors=validate_plan_vocabulary(book)
         if errors:
             raise ConfigError("\n".join(errors))

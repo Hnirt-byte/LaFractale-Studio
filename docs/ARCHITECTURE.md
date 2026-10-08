@@ -5,6 +5,7 @@
 - `src/lafractale/activities/` : API `generate(spec, seed)->Activity` et `validate(activity)->ValidationResult`. Modèle contient `id`, `type`, `age_band`, `prompt_fr`, `prompt_en`, `scene`, `assets`, `geometry`, `answer`, `seed`.
 - `src/lafractale/story/` : transitions, scènes et vérifications de progression sans répétition de scènes.
 - `src/lafractale/assets/` : registres avec checksum, validité, résolution et approbation. Pas d'altération automatique des originaux.
+- `src/lafractale/config/companions.py` + `assets/companions/catalog.yaml` : compagnons indépendants par livre, références SHA-256, exclusivité `allowed_book_ids`, statut `pending_selection` autorisé en démo neutre uniquement.
 - `src/lafractale/layout/` : rendu typographique et graphiques vectoriels via ReportLab ou équivalent, conservation de marges.
 - `src/lafractale/export/` : intérieur, corrigés, aperçus, manifest.
 - `src/lafractale/quality/` : test de géométrie, unicité, vocabulaire, overflow, pagination, assets, contrôle humain à l'état `pending`.
@@ -21,7 +22,7 @@
 `python -m lafractale validate books/halloween_2026/book.yaml`
 `python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/demo`
 `python -m pytest -q`
-Ces interfaces sont **une cible à implémenter**, pas des commandes déjà opérationnelles.
+Ces interfaces sont opérationnelles dans la V0.1 et restent prises en charge en V0.2-A.
 
 ## Git
 Branches de fonctionnalité + PR ; aucun secret ; `.gitignore` pour outputs lourds, caches, `.env`; inclure quelques fixtures/aperçus de référence raisonnables. Versions et changelog.

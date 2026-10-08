@@ -2,7 +2,7 @@
 book_id: christmas_2026
 publisher: "LaFractale Édition"
 collection: "Je joue, j'apprends !"
-title: "Mon Noël bilingue avec Pip"
+title: "Mon Noël bilingue"
 status: planning
 language_primary: fr
 language_secondary: en
@@ -19,10 +19,8 @@ interior:
 cover:
   ink: color
   template: pending_kdp_calculation
-mascot:
-  name: Pip
-  approved_reference: assets/characters/pip/pip_officiel_couleur.png
-  require_bow_tie: true
+companion:
+  status: pending_selection
 vocabulary:
   étoile: star
   lune: moon
@@ -31,7 +29,7 @@ vocabulary:
   sapin: tree
   neige: snow
 story:
-  premise: "Pip prépare une fête d'hiver avec ses amis."
+  premise: "Une fête d’hiver se prépare."
   chapters: 5
 quality:
   exact_pages: true
@@ -41,7 +39,7 @@ quality:
 demo_activities:
   - page: 4
     type: maze
-    scene: "Pip cherche un chemin dans la neige"
+    scene: "Un chemin dans la neige"
     vocabulary: [neige]
   - page: 8
     type: connect_dots

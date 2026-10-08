@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from lafractale.activities.models import Activity
+from lafractale import __version__
 
 
 def fonts() -> tuple[str, str]:
@@ -34,9 +35,9 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
         c.setStrokeColorRGB(0,0,0)
         c.setLineWidth(1)
         c.setFont(bold, 19)
-        c.drawString(margin, height - 69, "CORRIGÉ" if answer_key else "Je joue avec Pip !")
+        c.drawString(margin, height - 69, "CORRIGÉ" if answer_key else (f"Je joue avec {activity.companion_name} !" if activity.companion_name else "Je joue et j’apprends !"))
         c.setFont(regular, 10)
-        c.drawRightString(width - margin, height - 64, f"Démo V0.1 | fiche {activity.page}")
+        c.drawRightString(width - margin, height - 64, f"Démo {__version__} | fiche {activity.page}")
         c.line(margin,height-82,width-margin,height-82)
         # Never silently truncate instructions or stories.
         for value, font_name, size in ((activity.scene,bold,13),(activity.prompt_fr,regular,12),
