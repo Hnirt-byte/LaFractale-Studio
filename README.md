@@ -10,7 +10,7 @@ python -m pip install -e '.[dev]'
 python -m pytest -q
 python -m lafractale validate books/halloween_2026/book.yaml
 python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/halloween-demo
-python -m lafractale qa dist/halloween-demo
+python -m lafractale qa dist/halloween-demo --book books/halloween_2026/book.yaml
 ```
 
 Le compagnon est désormais défini par `companion` dans le YAML du livre et résolu depuis `assets/companions/catalog.yaml`. Pip appartient uniquement à Halloween. Noël reste en `pending_selection` : les démos sont neutres, sans Pip ni personnage inventé, et la construction intégrale reste bloquée. Voir `docs/COMPANIONS_V0.2A.md`.
@@ -20,3 +20,14 @@ Deux scénarios : `books/halloween_2026` (56 pages dans le chemin de fer initial
 `python -m lafractale build books/halloween_2026/book.yaml` **refuse** une génération intégrale tant que toutes les mécaniques éditoriales ne sont pas implémentées. Les originaux des compagnons approuvés ne doivent jamais être régénérés ni écrasés. **Aucune publication Amazon KDP.**
 
 Lire `START_HERE_PROMPT.md`, `MASTER_PROMPT.md`, `docs/ARCHITECTURE.md`, `docs/EDITORIAL_BIBLE.md`, `docs/QUALITY_GATES.md`, `docs/KDP_PREPRESS.md` et `docs/IMPLEMENTATION_V0.1.md` pour les exigences et les limites.
+
+
+## V0.2-B1 : composition graphique expérimentale
+
+La composition contrôlée sépare les zones de page de leur rendu PDF vectoriel : en-tête, scène, consignes FR/EN, espace de jeu et emplacement **vide** d'illustration à valider. La démo conserve trois mécaniques et leurs corrigés, avec vérification anti-débords et tests de rendu. Les personnages ne sont pas dessinés automatiquement : l'illustration de Pip reste **référence seulement** pour Halloween, Noël demeure sans compagnon.
+
+Voir `docs/GRAPHIC_LAYOUT_V0.2B.md`. Aucun PDF commercial ni certification KDP ne sont générés.
+
+## Sécurité des exports B1
+
+Sous Linux, la V0.2-B1 consolidée exige `openat` / `O_NOFOLLOW` pour parcourir les chemins de sortie sans suivre de symlinks. `write_pdf` crée exclusivement un nouveau fichier PDF et refuse d'écraser tout fichier existant. `build_demo` prépare des artefacts dans un dossier privé et ne publie qu'une démonstration auditée. Les activités sont transmises au moteur graphique par instantané en lecture seule; les noms de personnages réservés sont contrôlés avant le manifeste. Ces contrôles ne sont **pas** une isolation contre du code Python arbitraire exécuté avec les mêmes privilèges. Voir `docs/SECURITY_OUTPUT_B1.md`.

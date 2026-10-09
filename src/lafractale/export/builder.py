@@ -2,6 +2,9 @@
 from __future__ import annotations
 import hashlib
 import json
+import re
+import copy
+import secrets
 import os
 import shutil
 import tempfile
@@ -15,8 +18,28 @@ from lafractale.story.plan import demo_specs, full_build_blockers
 from lafractale.activities.engine import generate, stable_seed
 from lafractale.assets.registry import registry, sha256
 from lafractale.config.companions import verify_companion_text
+from lafractale.security.text import (verify_text_policy, blocked_name_fingerprints,
+                                     parse_fingerprints, UnsafeEditorialText)
 from lafractale.quality.checks import validate_collection
 from lafractale.layout.pdf import write_pdf
+from lafractale.export.securefs import parent_dirfd, validate_leaf_dir, audit_root_dirfd, UnsafeOutputPath
+
+
+class PublicationError(RuntimeError):
+    """Failed to publish a generated demo (not an unsafe output path)."""
+
+
+class PublicationRecoveryError(PublicationError):
+    """Both publishing and restoring failed; old valid output is in backup_path."""
+
+    def __init__(self, backup_path: Path, publish_error: OSError, restore_error: OSError):
+        self.backup_path = backup_path
+        self.publish_error = publish_error
+        self.restore_error = restore_error
+        super().__init__(
+            f"Échec de publication ({publish_error}) ET de restauration ({restore_error}). "
+            f"Sauvegarde conservée pour récupération manuelle : {backup_path}"
+        )
 
 
 def dump_json(path: Path, data: dict | list) -> None:
@@ -42,6 +65,11 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026) -> dict:
         raise ConfigError("Exercices invalides :\n" + "\n".join(errors))
     assets=registry(book)
     companion=book.companion
+    prohibited = tuple(name for name in companion.reserved_names
+                       if not companion.selected or name.casefold() != companion.render_name.casefold())
+    # Capture the same detached, validated data for both PDF and JSON exports.
+    activity_snapshot = copy.deepcopy([a.as_dict() for a in activities])
+    verify_text_policy(activity_snapshot, forbidden_names=prohibited, location="activités générées")
     # Build in destination only after all structural blockers have passed.
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     interior=out/"interior.pdf";answers=out/"answer_key.pdf"
@@ -57,7 +85,10 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026) -> dict:
     with fitz.open(answers) as pdf:
         if len(pdf)!=len(activities):
             raise RuntimeError("Pagination du corrigé incorrecte")
-    dump_json(out/"activities.json",[a.as_dict() for a in activities])
+    # Reject any unexpected mutation by a renderer/hook before publication.
+    if [a.as_dict() for a in activities] != activity_snapshot:
+        raise ConfigError("Activités modifiées après validation pendant le rendu")
+    dump_json(out/"activities.json",activity_snapshot)
     report={
         "book_id":book.book_id,"engine_version":__version__,"kind":"TECHNICAL_DEMO_ONLY",
         "companion":{"status":companion.status,"id":companion.id,"name":companion.render_name},
@@ -91,6 +122,8 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026) -> dict:
                         "page_plan_sha256":sha256(plan_file) if plan_file.exists() else None},
               "assets":assets,"activities":[{"id":a.id,"page":a.page,"seed":a.seed} for a in activities],
               "outputs":{p:sha256(out/p) for p in ("interior.pdf","answer_key.pdf","activities.json","quality_report.json")},
+              "security":{"unicode_policy":"NFKC-Latin-no-ignorable-v1",
+                          "blocked_name_fingerprints":[list(item) for item in blocked_name_fingerprints(prohibited)]},
               "publication_approved":False}
     # Re-read the approved source at the last publication-adjacent step: a
     # post-load or mid-build mutation must never yield a trusted manifest.
@@ -98,54 +131,113 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026) -> dict:
     verify_book_snapshot(book)
     if registry(book) != assets:
         raise ConfigError("Compagnon modifié pendant la génération")
+    # Rendered PDFs must not smuggle reserved names which were absent from
+    # validated editorial source (including a renderer-level text injection).
+    for filename in ("interior.pdf", "answer_key.pdf"):
+        with fitz.open(out / filename) as pdf:
+            content = "\n".join(page.get_text() for page in pdf)
+        verify_text_policy(content, forbidden_names=prohibited, location=f"PDF {filename}")
+    # Re-check the generated data against companion restrictions as well.
+    enriched = copy.deepcopy(book.data)
+    enriched["generated_activities"] = activity_snapshot
+    verify_companion_text(book.root, book.companion, enriched, book.plan)
+    verify_text_policy(report, forbidden_names=prohibited, location="rapport JSON")
+    verify_text_policy(manifest, forbidden_names=prohibited, location="manifeste JSON")
     dump_json(out/"manifest.json",manifest)
     return report
 
 
 def build_demo(book: Book, out: Path, *, seed: int = 2026) -> dict:
-    """Generate in a private staging directory, publish only after passing QA.
+    """Build in a private directory and publish using anchored directory FDs.
 
-    Mid-render mutations must not leave a partially rendered book (or a fake
-    success manifest) in the user-visible destination. An existing valid demo
-    stays unchanged if validation fails.
+    Each parent component is opened with O_NOFOLLOW; replacements and cleanup
+    operate on names relative to the verified parent, not resolved user paths.
     """
+    if ".." in Path(out).parts:
+        raise UnsafeOutputPath("Traversée de chemin de sortie interdite")
     out = Path(os.path.abspath(out))
-    if out.is_symlink() or (out.exists() and not out.is_dir()):
-        raise ConfigError("Répertoire de sortie invalide ou symlink interdit")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=f".{out.name}.build-", dir=out.parent))
-    backup: Path | None = None
-    try:
-        report = _build_demo_unpublished(book, stage, seed=seed)
-        errors = audit_output(stage)
-        if errors:
-            raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
-        # After the last validation, the original output is not touched until
-        # a complete and audited directory is ready to be swapped in.
-        if out.is_symlink() or (out.exists() and not out.is_dir()):
-            raise ConfigError("Répertoire de sortie modifié pendant la génération")
-        if out.exists():
-            backup = Path(tempfile.mkdtemp(prefix=f".{out.name}.previous-", dir=out.parent))
-            backup.rmdir()
-            os.replace(out, backup)
+    with parent_dirfd(out, create=True) as (parent_fd, leaf):
+        validate_leaf_dir(parent_fd, leaf)
+        nonce = secrets.token_hex(16)
+        stage_name = f".{leaf}.build-{nonce}"
+        backup_name = f".{leaf}.previous-{nonce}"
+        os.mkdir(stage_name, mode=0o700, dir_fd=parent_fd)
+        # The parent FD anchors the actual directory even if an ancestor path
+        # is concurrently renamed. Staging is private to the generating user.
+        parent_real = Path(os.readlink(f"/proc/self/fd/{parent_fd}"))
+        stage = parent_real / stage_name
+        backup = parent_real / backup_name
+        has_backup = False
+        published = False
         try:
-            os.replace(stage, out)
-        except OSError:
-            if backup is not None:
-                os.replace(backup, out)
-                backup = None
-            raise
-        return report
-    finally:
-        if stage.exists():
-            shutil.rmtree(stage)
-        if backup is not None and backup.exists():
-            shutil.rmtree(backup)
+            report = _build_demo_unpublished(book, stage, seed=seed)
+            errors = audit_output(stage, book=book)
+            if errors:
+                raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
+            if validate_leaf_dir(parent_fd, leaf):
+                os.replace(leaf, backup_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+                has_backup = True
+            try:
+                os.replace(stage_name, leaf, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            except OSError as publish_exc:
+                if has_backup:
+                    try:
+                        os.replace(backup_name, leaf, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+                    except OSError as restore_exc:
+                        # Recovery is not confirmed: NEVER remove the backup.
+                        # The old, audited manifest and PDFs remain there.
+                        raise PublicationRecoveryError(backup, publish_exc, restore_exc) from restore_exc
+                    else:
+                        has_backup = False  # restoration succeeded; backup moved back
+                raise PublicationError(f"Échec de publication du dossier : {publish_exc}") from publish_exc
+            published = True
+            return report
+        finally:
+            if stage.is_dir() and not stage.is_symlink():
+                shutil.rmtree(stage)
+            # Only a CONFIRMED successful publication permits deleting the old
+            # valid demo. A failed rollback must retain the backup intact.
+            if published and has_backup and backup.is_dir() and not backup.is_symlink():
+                shutil.rmtree(backup)
 
 
-def audit_output(out: Path) -> list[str]:
-    """Audit only the fixed, local artifacts emitted by build_demo."""
-    out = Path(out).resolve()
+def audit_output(out: Path, *, book: Book | None = None) -> list[str]:
+    """Audit only through a symlink-free, FD-anchored directory root."""
+    if book is None:
+        return ["Audit impossible : --book / contexte source de confiance obligatoire"]
+    try:
+        with audit_root_dirfd(out) as anchored_root:
+            return _audit_output_verified(anchored_root, book=book)
+    except (UnsafeOutputPath, OSError) as exc:
+        return [f"Répertoire d'audit non autorisé : {exc}"]
+
+
+def _audit_output_verified(out: Path, *, book: Book) -> list[str]:
+    """Source policy comes from Book; the output FD cannot be a user symlink.
+
+    The root FD stays open while files are inspected through /proc/self/fd.
+    """
+    try:
+        verify_book_snapshot(book)
+        verify_companion_text(book.root, book.companion, book.data, book.plan)
+        # The audit policy comes exclusively from the pinned source catalogue.
+        companion = book.companion
+        prohibited = tuple(name for name in companion.reserved_names
+                           if not companion.selected or
+                           name.casefold() != companion.render_name.casefold())
+        trusted_fingerprints = blocked_name_fingerprints(prohibited)
+        expected_companion = {"status": companion.status, "id": companion.id,
+                              "name": companion.render_name}
+        trusted_source = {
+            "book_config": str(book.path.relative_to(book.root)),
+            "book_config_sha256": book.source_sha256,
+            "page_plan_sha256": book.source_plan_sha256,
+        }
+    except (ConfigError, ValueError, OSError, RuntimeError) as exc:
+        return [f"Audit impossible : source de confiance invalide : {exc}"]
+    # Resolve only the already-open trusted FD for within-root comparisons;
+    # NEVER resolve an untrusted user-provided audit path.
+    root_real = out.resolve(strict=True)
     expected_outputs = {"interior.pdf", "answer_key.pdf", "activities.json", "quality_report.json"}
     errors: list[str] = []
     manifest_path = out / "manifest.json"
@@ -154,7 +246,7 @@ def audit_output(out: Path) -> list[str]:
         if path.is_symlink() or not path.is_file():
             return [f"Manifest/rapport non autorisé : {path.name}"]
         try:
-            path.resolve().relative_to(out)
+            path.resolve().relative_to(root_real)
         except ValueError:
             return [f"Manifest/rapport non autorisé : {path.name}"]
     try:
@@ -166,6 +258,40 @@ def audit_output(out: Path) -> list[str]:
         return ["Manifest invalide : objet JSON attendu"]
     if not isinstance(report, dict):
         return ["Rapport qualité invalide : objet JSON attendu"]
+    try:
+        security = manifest.get("security")
+        if not isinstance(security, dict) or security.get("unicode_policy") != "NFKC-Latin-no-ignorable-v1":
+            raise UnsafeEditorialText("Manifeste : politique Unicode absente ou non conforme")
+        # Strict comparison with source-backed policy; the manifest CANNOT select
+        # or disable forbidden identities, even with recomputed file checksums.
+        manifest_fingerprints = parse_fingerprints(security.get("blocked_name_fingerprints"))
+        if (set(security) != {"unicode_policy", "blocked_name_fingerprints"}
+                or manifest_fingerprints != trusted_fingerprints):
+            raise UnsafeEditorialText("Manifeste : empreintes des noms réservés non conformes à la source")
+        if (manifest.get("book_id") != book.book_id
+                or manifest.get("target_pages") != book.pages
+                or manifest.get("companion") != expected_companion
+                or manifest.get("source") != trusted_source
+                or report.get("book_id") != book.book_id
+                or report.get("companion") != expected_companion):
+            raise UnsafeEditorialText("Manifeste/rapport : identité ou provenance non conformes à la source")
+        fingerprints = trusted_fingerprints
+        verify_text_policy(manifest, fingerprints=fingerprints, location="manifeste")
+        verify_text_policy(report, fingerprints=fingerprints, location="rapport")
+        # QA must not follow attacker-provided symlinks while reading JSON/MD.
+        # This guard precedes parsing; checksum validation follows below.
+        activities_path = out / "activities.json"
+        markdown_path = out / "quality_report.md"
+        for artifact in (activities_path, markdown_path):
+            if (artifact.is_symlink() or not artifact.is_file()
+                    or artifact.stat().st_size > 4_000_000):
+                raise UnsafeEditorialText(f"Sortie texte non autorisée : {artifact.name}")
+        activities_json = json.loads(activities_path.read_text(encoding="utf-8"))
+        verify_text_policy(activities_json, fingerprints=fingerprints, location="activités JSON")
+        verify_text_policy(markdown_path.read_text(encoding="utf-8"),
+                           fingerprints=fingerprints, location="rapport Markdown")
+    except (UnsafeEditorialText, ValueError, OSError) as exc:
+        return [f"Sécurité texte/Unicode activities.json / manifeste / rapport : {exc}"]
     demo_pages = manifest.get("demo_pages")
     if not isinstance(demo_pages, int) or isinstance(demo_pages, bool) or not 1 <= demo_pages <= 50:
         return ["Manifest demo_pages invalide"]
@@ -192,7 +318,7 @@ def audit_output(out: Path) -> list[str]:
             errors.append(f"Fichier modifié/absent : {name}")
             continue
         try:
-            path.resolve().relative_to(out)
+            path.resolve().relative_to(root_real)
         except ValueError:
             errors.append(f"Fichier hors sortie autorisée : {name}")
             continue
@@ -207,8 +333,14 @@ def audit_output(out: Path) -> list[str]:
                 if len(pdf) != manifest.get("demo_pages"):
                     errors.append(f"PDF : mauvais nombre de pages {name}")
                 for index, page in enumerate(pdf):
-                    if not page.get_text().strip():
+                    extracted = page.get_text()
+                    if not extracted.strip():
                         errors.append(f"PDF : texte absent {name} p{index + 1}")
+                    try:
+                        verify_text_policy(extracted, fingerprints=fingerprints,
+                                           location=f"PDF {name} p{index+1}")
+                    except UnsafeEditorialText as exc:
+                        errors.append(str(exc))
                     if not page.get_fonts():
                         errors.append(f"PDF : police absente {name} p{index + 1}")
         except Exception as exc:
