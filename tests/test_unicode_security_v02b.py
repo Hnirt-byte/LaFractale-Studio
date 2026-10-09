@@ -129,6 +129,8 @@ def test_generated_activity_injection_rejected_before_publication(tmp_path, monk
     with pytest.raises(UnsafeEditorialText, match='invisible'):
         build_demo(book, out)
     assert _fingerprints(out) == before
+    # Source-backed replay requires the original generator restored.
+    monkeypatch.setattr(builder, "generate", generator)
     assert audit_output(out, book=load_book(config)) == []
 
 
@@ -193,6 +195,8 @@ def test_renderer_level_pdf_spoof_rejected_and_existing_demo_preserved(tmp_path,
     with pytest.raises((UnsafeEditorialText, ConfigError, ValueError)):
         build_demo(book, out)
     assert _fingerprints(out) == before
+    # Source-backed replay requires the original renderer restored.
+    monkeypatch.setattr(renderer, "_dots", original)
     assert audit_output(out, book=load_book(config)) == []
 
 

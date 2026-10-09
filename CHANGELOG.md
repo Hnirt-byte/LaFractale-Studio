@@ -72,3 +72,12 @@
 - Matrice adversariale ajoutée : YAML, JSON, Markdown, manifeste, PDF réels,
   checksums recalculés, tests CLI et conservation des démos valides.
 - Statut : maquette technique, non publiable sur Amazon KDP.
+
+
+### Correctif B2-A : frontière JSON stricte (pré-PR)
+- Parsing partagé qui refuse les clés dupliquées récursivement pour le
+  manifeste, les activités, les rapports qualité et le registre d'approbation.
+- Rejet des clés échappées équivalentes, des nombres non finis, des chaînes
+  Unicode invalides et des documents trop profondément imbriqués.
+- Aucun changement aux visuels ni à la logique des jeux ; QA sans confiance
+  dans les checksums internes des sorties.

@@ -156,6 +156,8 @@ def test_pdf_raises_before_replacing_existing_valid_demo(tmp_path, halloween, mo
         build_demo(halloween, out)
     assert (out / "interior.pdf").read_bytes() == pdf_bytes_before
     assert (out / "manifest.json").read_bytes() == manifest_before
+    # Replay now requires the original trusted renderer, not the fault-injected hook.
+    monkeypatch.setattr(pdf_module, "compose_page", original)
     assert audit_output(out, book=halloween) == []
 
 
