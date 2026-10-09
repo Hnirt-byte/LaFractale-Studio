@@ -64,9 +64,17 @@ def sample(tmp_path):
     return _make_fixture(tmp_path)
 
 
-def test_empty_registry_is_non_approving():
-    data = json.loads((ORIGIN / REGISTRY_PATH).read_text())
-    assert data == {'schema_version': 1, 'illustrations': []}
+def test_empty_registry_is_non_approving(tmp_path):
+    # A temporary isolated empty registry must never authorize artwork.
+    # B2-B production registry contains six approved Pip drawings by design.
+    _, book, approvals, entry, _, _, _ = _make_fixture(tmp_path)
+    approvals.write_text(
+        json.dumps({'schema_version': 1, 'illustrations': []}) + '\n',
+        encoding='utf-8',
+    )
+    empty_pin = sha256(approvals.read_bytes()).hexdigest()
+    with pytest.raises(IllustrationError, match='absent du registre'):
+        load_approved_artwork(book, entry['id'], trusted_approvals_sha256=empty_pin)
 
 
 def test_valid_opt_in_monochrome_pdf_and_external_audit(sample, tmp_path):
