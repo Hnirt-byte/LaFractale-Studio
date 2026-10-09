@@ -172,6 +172,8 @@ def test_injected_name_does_not_replace_existing_valid_demo(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="Compagnon non autorisé"):
         build_demo(book, out)
     assert all((out / name).read_bytes() == data for name, data in before.items())
+    # Audit validates against the current trusted renderer; restore it first.
+    monkeypatch.setattr(renderer, "_dots", original)
     assert audit_output(out, book=book) == []
 
 

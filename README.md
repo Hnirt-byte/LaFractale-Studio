@@ -31,3 +31,7 @@ Voir `docs/GRAPHIC_LAYOUT_V0.2B.md`. Aucun PDF commercial ni certification KDP n
 ## Sécurité des exports B1
 
 Sous Linux, la V0.2-B1 consolidée exige `openat` / `O_NOFOLLOW` pour parcourir les chemins de sortie sans suivre de symlinks. `write_pdf` crée exclusivement un nouveau fichier PDF et refuse d'écraser tout fichier existant. `build_demo` prépare des artefacts dans un dossier privé et ne publie qu'une démonstration auditée. Les activités sont transmises au moteur graphique par instantané en lecture seule; les noms de personnages réservés sont contrôlés avant le manifeste. Ces contrôles ne sont **pas** une isolation contre du code Python arbitraire exécuté avec les mêmes privilèges. Voir `docs/SECURITY_OUTPUT_B1.md`.
+
+### V0.2-B2-A : illustrations optionnelles, aucune nouvelle mascotte approuvée
+
+Le registre indépendant `assets/illustrations/approvals.json` est initialement vide. L'intérieur reste inchangé par défaut et affiche `VISUEL À VALIDER`. Un futur visuel monochrome pour le compagnon du livre ne pourra être inséré qu'avec son ID et le hash de la révision du registre validée **hors des artefacts**. Voir [`docs/GRAPHIC_ASSETS_B2A.md`](docs/GRAPHIC_ASSETS_B2A.md) et [`docs/SECURITY_CONTRACT_V0.2B2.md`](docs/SECURITY_CONTRACT_V0.2B2.md).

@@ -6,6 +6,7 @@ redrawn or inferred from the reference image, including Pip.
 from __future__ import annotations
 
 from dataclasses import replace
+from io import BytesIO
 from types import MappingProxyType
 from collections.abc import Mapping
 import copy
@@ -16,6 +17,7 @@ from pathlib import Path
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 
 from lafractale.activities.models import Activity
 from lafractale import __version__
@@ -23,6 +25,8 @@ from lafractale.layout.composition import Rect, TextBlock, compose_page
 from lafractale.export.securefs import new_regular_file
 from lafractale.quality.checks import validate_collection
 from lafractale.security.text import verify_text_policy
+from lafractale.illustrations.registry import VerifiedArtwork, verify_approved_artwork, IllustrationError
+from lafractale.config.schema import Book
 
 
 def fonts() -> tuple[str, str]:
@@ -57,7 +61,7 @@ def _frame(c: canvas.Canvas, box: Rect) -> None:
 
 
 def _draw_shell(c: canvas.Canvas, layout, activity: Activity, regular: str, bold: str,
-                index: int, total: int) -> None:
+                index: int, total: int, artwork: VerifiedArtwork | None = None) -> None:
     header = layout.header
     c.setFillGray(.945)
     c.setStrokeGray(.58)
@@ -71,20 +75,33 @@ def _draw_shell(c: canvas.Canvas, layout, activity: Activity, regular: str, bold
     c.roundRect(header.right - 145, header.y + 13, 130, 41, 13, stroke=1, fill=1)
     _draw_text(c, layout.page_label)
     _draw_text(c, layout.scene)
-    # A deliberate empty asset slot: Pip's colored reference is NOT a licensed
-    # or approved monochrome print variant, and Noël has no companion selected.
     slot = layout.companion_slot
-    c.saveState()
-    c.setStrokeGray(.67)
-    c.setDash(2.4, 3.2)
-    c.roundRect(slot.x + 3, slot.y + 3, slot.width - 6, slot.height - 6, 7, stroke=1, fill=0)
-    c.restoreState()
-    c.setFillGray(.34)
-    c.setFont(regular, 7)
-    label = "VISUEL À VALIDER"
-    if _measure(label, regular, 7) > slot.width - 14:
-        raise ValueError("Libellé du visuel trop long")
-    c.drawCentredString(slot.x + slot.width / 2, slot.y + slot.height / 2 - 2, label)
+    if artwork is None:
+        # By default the reference-color Pip and all unapproved images are ABSENT.
+        c.saveState()
+        c.setStrokeGray(.67)
+        c.setDash(2.4, 3.2)
+        c.roundRect(slot.x + 3, slot.y + 3, slot.width - 6, slot.height - 6, 7, stroke=1, fill=0)
+        c.restoreState()
+        c.setFillGray(.34)
+        c.setFont(regular, 7)
+        label = "VISUEL À VALIDER"
+        if _measure(label, regular, 7) > slot.width - 14:
+            raise ValueError("Libellé du visuel trop long")
+        c.drawCentredString(slot.x + slot.width / 2, slot.y + slot.height / 2 - 2, label)
+    else:
+        if artwork.variant != "monochrome" or artwork.role != "companion":
+            raise IllustrationError("Visuel imprimable non conforme")
+        # The image only ever comes from validated, detached immutable PNG bytes.
+        scale = min((slot.width - 8) / artwork.width, (slot.height - 6) / artwork.height)
+        w, h = artwork.width * scale, artwork.height * scale
+        if min(artwork.width / (w / 72), artwork.height / (h / 72)) < 300:
+            raise IllustrationError("Résolution insuffisante pour le visuel à 300 DPI")
+        if w <= 0 or h <= 0 or w > slot.width - 8 + .001 or h > slot.height - 6 + .001:
+            raise IllustrationError("Visuel hors zone graphique")
+        x, y = slot.x + (slot.width - w) / 2, slot.y + (slot.height - h) / 2
+        c.drawImage(ImageReader(BytesIO(artwork.pixels)), x, y, width=w, height=h,
+                    preserveAspectRatio=False, mask=None)
     _draw_text(c, layout.prompt_fr)
     _draw_text(c, layout.prompt_en, gray=.26)
     c.setLineWidth(1)
@@ -305,12 +322,23 @@ def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
                  for act in copies)
 
 
-def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool) -> None:
+def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool,
+              artwork: VerifiedArtwork | None = None, approved_book: Book | None = None,
+              trusted_approvals_sha256: str | None = None) -> None:
     """Render from a checked immutable snapshot to a new, safe file only.
 
     A writer calling compose_page cannot alter geometry passed to _dots().
     Separately, the original activities are never accessed during drawing.
     """
+    if artwork is not None:
+        if approved_book is None or trusted_approvals_sha256 is None:
+            raise IllustrationError("Source d'approbation indépendante obligatoire pour un visuel PDF")
+        verify_approved_artwork(approved_book, artwork,
+                                trusted_approvals_sha256=trusted_approvals_sha256)
+        if approved_book.data != book:
+            raise IllustrationError("Configuration PDF non conforme au livre approuvé")
+    elif approved_book is not None or trusted_approvals_sha256 is not None:
+        raise IllustrationError("Paramètres graphiques partiels interdits")
     rendering = _render_snapshot(activities)
     book_snapshot = _freeze(copy.deepcopy(book))
     verify_text_policy(book_snapshot, location="configuration PDF")
@@ -323,7 +351,7 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
         for index, act in enumerate(rendering, start=1):
             layout = compose_page(act, book_snapshot, index=index, count=len(rendering), answer_key=answer_key,
                                   regular=regular, bold=bold, text_width=_measure)
-            _draw_shell(c, layout, act, regular, bold, index, len(rendering))
+            _draw_shell(c, layout, act, regular, bold, index, len(rendering), artwork=artwork)
             if act.type == "maze":
                 _maze(c, act, layout.board, answer_key, bold)
             elif act.type == "match":
