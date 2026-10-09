@@ -1,4 +1,77 @@
 {
   "schema_version": 1,
-  "illustrations": []
+  "illustrations": [
+    {
+      "id": "pip-reference-nb-v1",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-reference-nb-v1.png",
+      "sha256": "8bf579336b405e2a9de0dc1fdbd7bbc281fd80dfa8d236d4108f8b1a6d9719b1",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    },
+    {
+      "id": "pip-accueil-v1",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-accueil-v1.png",
+      "sha256": "72716b4193b6f15e5ffb55340f6d3ddfa428282e804b44ff410f01354bf52a09",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    },
+    {
+      "id": "pip-encouragement-v1",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-encouragement-v1.png",
+      "sha256": "1bd15c92f77825160258e962f08b1bfcc593e9de99f229e73469d1c295051597",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    },
+    {
+      "id": "pip-indication-v1",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-indication-v1.png",
+      "sha256": "a3bec36fdec734d0791e5c76da99f1273eda43586310fdba795f6fc1a8089a81",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    },
+    {
+      "id": "pip-reflexion-v2",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-reflexion-v2.png",
+      "sha256": "37107eb5c2a7331232303a0c0ae0347e3766faacc00e0abc779c78409c47ba48",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    },
+    {
+      "id": "pip-felicitations-v2",
+      "book_id": "halloween_2026",
+      "companion_id": "pip",
+      "role": "companion",
+      "variant": "monochrome",
+      "path": "assets/illustrations/halloween_2026/pip/pip-felicitations-v2.png",
+      "sha256": "74030cb477e121addd94bcb1d5d4dcb8193b7cb123695e7a546ef9a733dba098",
+      "width": 1254,
+      "height": 1254,
+      "human_approved": true
+    }
+  ]
 }
