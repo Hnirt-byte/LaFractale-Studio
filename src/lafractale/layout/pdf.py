@@ -1,17 +1,31 @@
-"""Black-and-white vector layout; no generated character or fabricated illustration."""
+"""Deterministic monochrome worksheet renderer driven by a checked page composition.
+
+All shapes and answer paths come from validated activity data. No character is
+redrawn or inferred from the reference image, including Pip.
+"""
 from __future__ import annotations
+
+from dataclasses import replace
+from types import MappingProxyType
+from collections.abc import Mapping
+import copy
 import math
 import os
 from pathlib import Path
+
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+
 from lafractale.activities.models import Activity
 from lafractale import __version__
+from lafractale.layout.composition import Rect, TextBlock, compose_page
+from lafractale.export.securefs import new_regular_file
+from lafractale.quality.checks import validate_collection
+from lafractale.security.text import verify_text_policy
 
 
 def fonts() -> tuple[str, str]:
-    # Bundle no proprietary or system font: require local licensed fonts.
     regular = Path(os.getenv("LAFRACTALE_FONT_PATH", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
     bold = Path(os.getenv("LAFRACTALE_FONT_BOLD_PATH", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
     if not regular.is_file() or not bold.is_file():
@@ -22,163 +36,301 @@ def fonts() -> tuple[str, str]:
     return "LaFractaleRegular", "LaFractaleBold"
 
 
-def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool) -> None:
-    regular, bold = fonts()
-    width, height = book["trim"]["width_in"] * 72, book["trim"]["height_in"] * 72
-    margin = 55
-    path.parent.mkdir(parents=True, exist_ok=True)
-    c = canvas.Canvas(str(path), pagesize=(width, height), invariant=1, pageCompression=1)
-    c.setTitle(("CORRIGES" if answer_key else "DEMONSTRATION") + " - " + book["title"])
-    c.setAuthor(book["publisher"])
-    for index, activity in enumerate(activities, start=1):
-        c.setFillColorRGB(0,0,0)
-        c.setStrokeColorRGB(0,0,0)
-        c.setLineWidth(1)
-        c.setFont(bold, 19)
-        c.drawString(margin, height - 69, "CORRIGÉ" if answer_key else (f"Je joue avec {activity.companion_name} !" if activity.companion_name else "Je joue et j’apprends !"))
-        c.setFont(regular, 10)
-        c.drawRightString(width - margin, height - 64, f"Démo {__version__} | fiche {activity.page}")
-        c.line(margin,height-82,width-margin,height-82)
-        # Never silently truncate instructions or stories.
-        for value, font_name, size in ((activity.scene,bold,13),(activity.prompt_fr,regular,12),
-                                       (activity.prompt_en,regular,10)):
-            if pdfmetrics.stringWidth(value,font_name,size) > width - 2 * margin:
-                raise ValueError(f"Texte déborde la zone sûre : {activity.id}: {value}")
-        c.setFont(bold, 13)
-        c.drawString(margin,height-113,activity.scene)
-        c.setFont(regular, 12)
-        c.drawString(margin,height-143,activity.prompt_fr)
-        c.setFont(regular, 10)
-        c.drawString(margin,height-163,activity.prompt_en)
-        if activity.type == "maze":
-            _maze(c, activity, width, height, answer_key, bold)
-        elif activity.type == "match":
-            _match(c, activity, width, height, answer_key, regular)
-        elif activity.type == "connect_dots":
-            _dots(c, activity, width, height, answer_key, bold)
-        else:
-            raise ValueError(f"Type de rendu absent : {activity.type}")
-        c.setFont(regular, 8)
-        c.setFillColorRGB(.28,.28,.28)
-        c.drawString(margin,50,"MAQUETTE TECHNIQUE | contrôle visuel et KDP non effectués")
-        c.drawRightString(width-margin,50,f"{index} / {len(activities)}")
-        c.showPage()
-    c.save()
+def _measure(text: str, font: str, size: int) -> float:
+    return pdfmetrics.stringWidth(text, font, size)
 
 
-def _maze(c, act, width, height, solution, font):
-    g=act.geometry
-    n=g["size"]
-    side=61
-    ox=(width-n*side)/2
-    oy=227
-    passages={tuple(sorted((tuple(a),tuple(b)))) for a,b in g["open_edges"]}
-    c.setLineWidth(2.7)
-    for y in range(n):
-        for x in range(n):
-            # Each shared wall is drawn only once (north and west for each cell).
-            left=(x,y)
-            if y==0 or tuple(sorted((left,(x,y-1)))) not in passages:
-                c.line(ox+x*side,oy+y*side,ox+(x+1)*side,oy+y*side)
-            if x==0 or tuple(sorted((left,(x-1,y)))) not in passages:
-                c.line(ox+x*side,oy+y*side,ox+x*side,oy+(y+1)*side)
-    c.line(ox,oy+n*side,ox+n*side,oy+n*side)
-    c.line(ox+n*side,oy,ox+n*side,oy+n*side)
-    c.setFont(font,11)
-    c.drawCentredString(ox+side/2, oy+side/2 - 5, "D")
-    c.drawCentredString(ox+(n-.5)*side, oy+(n-.5)*side - 5, "A")
-    c.setFont(font,9)
-    c.drawString(ox,oy-35,"D = Départ")
-    c.drawRightString(ox+n*side,oy-35,"A = Arrivée")
+def _draw_text(c: canvas.Canvas, text: TextBlock, *, gray: float = 0.07) -> None:
+    c.setFillGray(gray)
+    c.setFont(text.font, text.size)
+    for index, line in enumerate(text.lines):
+        c.drawString(text.region.x, text.region.top - text.size - index * text.leading, line)
+
+
+def _frame(c: canvas.Canvas, box: Rect) -> None:
+    # Contrast and whitespace are optimized for A4/US-letter size monochrome
+    # proofing. They are not a substitute for press-preflight checks.
+    c.setFillGray(.978)
+    c.setStrokeGray(.62)
+    c.setLineWidth(1.3)
+    c.roundRect(box.x, box.y, box.width, box.height, 16, stroke=1, fill=1)
+
+
+def _draw_shell(c: canvas.Canvas, layout, activity: Activity, regular: str, bold: str,
+                index: int, total: int) -> None:
+    header = layout.header
+    c.setFillGray(.945)
+    c.setStrokeGray(.58)
+    c.setLineWidth(1.1)
+    c.roundRect(header.x, header.y, header.width, header.height, 14, fill=1, stroke=1)
+    c.setFillGray(.12)
+    c.roundRect(header.x, header.y, 9, header.height, 4, fill=1, stroke=0)
+    _draw_text(c, layout.title)
+    c.setFillGray(1)
+    c.setStrokeGray(.38)
+    c.roundRect(header.right - 145, header.y + 13, 130, 41, 13, stroke=1, fill=1)
+    _draw_text(c, layout.page_label)
+    _draw_text(c, layout.scene)
+    # A deliberate empty asset slot: Pip's colored reference is NOT a licensed
+    # or approved monochrome print variant, and Noël has no companion selected.
+    slot = layout.companion_slot
+    c.saveState()
+    c.setStrokeGray(.67)
+    c.setDash(2.4, 3.2)
+    c.roundRect(slot.x + 3, slot.y + 3, slot.width - 6, slot.height - 6, 7, stroke=1, fill=0)
+    c.restoreState()
+    c.setFillGray(.34)
+    c.setFont(regular, 7)
+    label = "VISUEL À VALIDER"
+    if _measure(label, regular, 7) > slot.width - 14:
+        raise ValueError("Libellé du visuel trop long")
+    c.drawCentredString(slot.x + slot.width / 2, slot.y + slot.height / 2 - 2, label)
+    _draw_text(c, layout.prompt_fr)
+    _draw_text(c, layout.prompt_en, gray=.26)
+    c.setLineWidth(1)
+    c.setStrokeGray(.7)
+    c.line(layout.footer.x, layout.footer.top - 1,
+           layout.footer.right, layout.footer.top - 1)
+    c.setFillGray(.28)
+    c.setFont(regular, 8)
+    footer_message = "MAQUETTE DE TRAVAIL | REVUE VISUELLE ET KDP EN ATTENTE"
+    if _measure(footer_message, regular, 8) > layout.footer.width - 62:
+        raise ValueError("Pied de page trop long")
+    c.drawString(layout.footer.x + 2, layout.footer.y + 15, footer_message)
+    c.drawRightString(layout.footer.right - 2, layout.footer.y + 15, f"{index}/{total}")
+    _frame(c, layout.board)
+    c.setFillGray(.28)
+    c.setFont(bold, 9)
+    label = {"maze": "TROUVE LE CHEMIN", "match": "RELIE LES JUMEAUX",
+             "connect_dots": "RELIE LES POINTS"}[activity.type]
+    c.drawString(layout.board.x + 22, layout.board.top - 27, label)
+
+
+def _maze(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str) -> None:
+    geometry = act.geometry
+    size = geometry["size"]
+    cell = min((board.width - 80) / size, (board.height - 95) / size)
+    if cell < 35:
+        raise ValueError("Labyrinthe trop petit pour être lisible")
+    span = size * cell
+    origin_x = board.x + (board.width - span) / 2
+    origin_y = board.y + (board.height - span) / 2 - 4
+    passages = {tuple(sorted((tuple(a), tuple(b)))) for a, b in geometry["open_edges"]}
+    c.setLineWidth(3.0)
+    c.setStrokeGray(.11)
+    for y in range(size):
+        for x in range(size):
+            node = (x, y)
+            if y == 0 or tuple(sorted((node, (x, y - 1)))) not in passages:
+                c.line(origin_x + x * cell, origin_y + y * cell,
+                       origin_x + (x + 1) * cell, origin_y + y * cell)
+            if x == 0 or tuple(sorted((node, (x - 1, y)))) not in passages:
+                c.line(origin_x + x * cell, origin_y + y * cell,
+                       origin_x + x * cell, origin_y + (y + 1) * cell)
+    c.line(origin_x, origin_y + span, origin_x + span, origin_y + span)
+    c.line(origin_x + span, origin_y, origin_x + span, origin_y + span)
     if solution:
         c.saveState()
-        c.setStrokeColorRGB(.45,.45,.45)
-        c.setLineWidth(5)
+        c.setStrokeGray(.66)
+        c.setLineWidth(8)
         c.setLineCap(1)
-        path=c.beginPath()
-        for i,(x,y) in enumerate(act.answer["path"]):
-            px,py=ox+(x+.5)*side,oy+(y+.5)*side
-            if i==0:path.moveTo(px,py)
-            else:path.lineTo(px,py)
+        path = c.beginPath()
+        for index, (x, y) in enumerate(act.answer["path"]):
+            cx, cy = origin_x + (x + .5) * cell, origin_y + (y + .5) * cell
+            if index == 0:
+                path.moveTo(cx, cy)
+            else:
+                path.lineTo(cx, cy)
         c.drawPath(path)
         c.restoreState()
+    for x, y, marker in ((0, 0, "D"), (size - 1, size - 1, "A")):
+        px, py = origin_x + (x + .5) * cell, origin_y + (y + .5) * cell
+        c.setFillGray(1)
+        c.setStrokeGray(.16)
+        c.circle(px, py, 13, fill=1, stroke=1)
+        c.setFillGray(.06)
+        c.setFont(bold, 12)
+        c.drawCentredString(px, py - 4, marker)
+    c.setFillGray(.22)
+    c.setFont(bold, 10)
+    c.drawString(origin_x, origin_y - 24, "D = Départ")
+    c.drawRightString(origin_x + span, origin_y - 24, "A = Arrivée")
 
 
-def _symbol(c,name,x,y,r):
+def _symbol(c: canvas.Canvas, name: str, x: float, y: float, r: float) -> None:
+    """Reproducible simple worksheet icons, not licensed character art."""
+    c.setStrokeGray(.12)
+    c.setLineWidth(2.6)
     if name.startswith("hat_"):
-        # Four distinct hat insignia, not an unrelated shape on a hat activity.
-        p=c.beginPath();p.moveTo(x-r*.78,y-r*.42)
-        p.lineTo(x-r*.46,y-r*.42);p.lineTo(x,y+r*.95)
-        p.lineTo(x+r*.46,y-r*.42);p.lineTo(x+r*.78,y-r*.42)
-        p.lineTo(x+r*.85,y-r*.63);p.lineTo(x-r*.85,y-r*.63)
-        p.close();c.drawPath(p,stroke=1,fill=0)
-        _symbol(c,name[4:],x,y-r*.22,r*.26)
+        p = c.beginPath()
+        p.moveTo(x - r * .90, y - r * .48)
+        p.lineTo(x - r * .54, y - r * .48)
+        p.lineTo(x, y + r * 1.03)
+        p.lineTo(x + r * .54, y - r * .48)
+        p.lineTo(x + r * .90, y - r * .48)
+        p.lineTo(x + r, y - r * .70)
+        p.lineTo(x - r, y - r * .70)
+        p.close()
+        c.drawPath(p)
+        _symbol(c, name[4:], x, y - r * .24, r * .32)
         return
     if name.startswith("gift_"):
-        # Identical boxes with a distinct center emblem, for visual matching.
-        c.rect(x-r*.80,y-r*.72,r*1.6,r*1.4,stroke=1,fill=0)
-        c.line(x-r*.80,y+r*.35,x+r*.80,y+r*.35)
-        c.line(x,y+r*.35,x,y+r*.67)
-        _symbol(c,name[5:],x,y-r*.18,r*.29)
+        c.roundRect(x - r * .78, y - r * .76, 1.56 * r, 1.44 * r, r * .12)
+        c.line(x - r * .78, y + r * .30, x + r * .78, y + r * .30)
+        c.line(x, y + r * .30, x, y + r * .68)
+        _symbol(c, name[5:], x, y - r * .18, r * .31)
         return
-    p=c.beginPath()
-    if name=="circle": c.circle(x,y,r,stroke=1,fill=0);return
-    if name=="square": c.rect(x-r,y-r,2*r,2*r,stroke=1,fill=0);return
-    if name=="triangle": count=3;offset=math.pi/2
-    elif name=="diamond":count=4;offset=math.pi/2
-    elif name=="star":count=10;offset=math.pi/2
-    elif name=="hexagon":count=6;offset=math.pi/2
-    else:raise ValueError(f"Symbole non implémenté : {name}")
+    if name == "circle":
+        c.circle(x, y, r, stroke=1, fill=0)
+        return
+    if name == "square":
+        c.rect(x - r, y - r, r * 2, r * 2)
+        return
+    if name == "triangle":
+        count, offset = 3, math.pi / 2
+    elif name == "diamond":
+        count, offset = 4, math.pi / 2
+    elif name == "star":
+        count, offset = 10, math.pi / 2
+    elif name == "hexagon":
+        count, offset = 6, math.pi / 2
+    else:
+        raise ValueError(f"Symbole non implémenté : {name}")
+    path = c.beginPath()
     for i in range(count):
-        rr=(r if i%2==0 else .47*r) if name=="star" else r
-        theta=offset+2*math.pi*i/count
-        px,py=x+rr*math.cos(theta),y+rr*math.sin(theta)
-        (p.moveTo if i==0 else p.lineTo)(px,py)
-    p.close()
-    c.drawPath(p,stroke=1,fill=0)
+        radius = (r if i % 2 == 0 else .47 * r) if name == "star" else r
+        angle = offset + 2 * math.pi * i / count
+        xy = (x + radius * math.cos(angle), y + radius * math.sin(angle))
+        if i == 0:
+            path.moveTo(*xy)
+        else:
+            path.lineTo(*xy)
+    path.close()
+    c.drawPath(path)
 
 
-def _match(c, act, width, height, solution, font):
-    leftx=width*.30
-    rightx=width*.70
-    ys=[557,465,373,281]
-    c.setLineWidth(2.4)
-    for i,name in enumerate(act.geometry["left_symbols"]):
-        c.circle(leftx+43,ys[i],3,stroke=1,fill=1)
-        _symbol(c,name,leftx-42,ys[i],21)
-    for i,name in enumerate(act.geometry["right_symbols"]):
-        c.circle(rightx-43,ys[i],3,stroke=1,fill=1)
-        _symbol(c,name,rightx+42,ys[i],21)
+def _match(c: canvas.Canvas, act: Activity, board: Rect, solution: bool) -> None:
+    left_x = board.x + board.width * .26
+    right_x = board.x + board.width * .74
+    usable_height = board.height - 128
+    row_gap = usable_height / 3
+    rows = [board.top - 72 - index * row_gap for index in range(4)]
+    left_anchor = board.x + board.width * .40
+    right_anchor = board.x + board.width * .60
+    for i, name in enumerate(act.geometry["left_symbols"]):
+        _symbol(c, name, left_x, rows[i], 26)
+        c.setFillGray(.11)
+        c.circle(left_anchor, rows[i], 3.4, fill=1, stroke=0)
+    for i, name in enumerate(act.geometry["right_symbols"]):
+        _symbol(c, name, right_x, rows[i], 26)
+        c.setFillGray(.11)
+        c.circle(right_anchor, rows[i], 3.4, fill=1, stroke=0)
     if solution:
-        c.saveState();c.setStrokeColorRGB(.43,.43,.43);c.setLineWidth(1.6)
-        for i,j in enumerate(act.answer["left_to_right"]):
-            c.line(leftx+43,ys[i],rightx-43,ys[j])
+        c.saveState()
+        c.setStrokeGray(.45)
+        c.setLineWidth(2.4)
+        for i, j in enumerate(act.answer["left_to_right"]):
+            c.line(left_anchor, rows[i], right_anchor, rows[j])
         c.restoreState()
-    c.setFont(font,10)
-    family=act.geometry.get("family", "shapes")
-    label={"hats":"Chaque chapeau a son jumeau.", "gifts":"Chaque cadeau a son jumeau.",
-           "shapes":"Chaque forme a une seule jumelle."}[family]
-    c.drawCentredString(width/2,205,label)
 
 
-def _dots(c,act,width,height,solution,font):
-    points=act.geometry["points"]
-    ox,oy=(width-330)/2,210
-    points_xy=[(ox+p["x"]*330,oy+p["y"]*380) for p in points]
+def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str) -> list[tuple[float, float]]:
+    """Place every number within the panel, away from other dots and labels."""
+    chosen: list[Rect] = []
+    output: list[tuple[float, float]] = []
+    bounds = Rect(board.x + 10, board.y + 13, board.width - 20, board.height - 55)
+    offsets = ((0, 19), (18, 8), (-18, 8), (19, -14), (-19, -14),
+               (0, -24), (25, 21), (-25, 21), (27, -25), (-27, -25),
+               (36, 0), (-36, 0))
+    for index, (x, y) in enumerate(points):
+        label = str(index + 1)
+        w = _measure(label, bold, 11) + 6
+        for dx, dy in offsets:
+            cx, cy = x + dx, y + dy
+            box = Rect(cx - w / 2, cy - 5, w, 13)
+            if not bounds.contains(box) or any(box.overlaps(other) for other in chosen):
+                continue
+            if any((cx - px) ** 2 + (cy - py) ** 2 < 13 ** 2 for px, py in points):
+                continue
+            chosen.append(box)
+            output.append((cx, cy - 4))
+            break
+        else:
+            raise ValueError("Numérotation des points illisible : placement impossible")
+    return output
+
+
+def _dots(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str) -> None:
+    points = act.geometry["points"]
+    if len(points) > 30:
+        raise ValueError("Trop de points pour la fiche V0.2-B")
+    x0, y0 = board.x + 67, board.y + 42
+    x_span, y_span = board.width - 134, board.height - 110
+    coords = [(x0 + p["x"] * x_span, y0 + p["y"] * y_span) for p in points]
+    positions = _labels_for_points(coords, board, bold)
     if solution:
-        c.saveState();c.setStrokeColorRGB(.45,.45,.45);c.setLineWidth(2.7)
-        p=c.beginPath()
-        for i,(x,y) in enumerate(points_xy):
-            (p.moveTo if i==0 else p.lineTo)(x,y)
-        p.close();c.drawPath(p)
+        c.saveState()
+        c.setStrokeGray(.50)
+        c.setLineWidth(2.8)
+        path = c.beginPath()
+        for i, (x, y) in enumerate(coords):
+            (path.moveTo if i == 0 else path.lineTo)(x, y)
+        path.close()
+        c.drawPath(path)
         c.restoreState()
-    c.setFont(font,11)
-    for item,(x,y) in zip(points,points_xy):
-        c.circle(x,y,3.5,stroke=1,fill=1)
-        # Position number away from contour: alternate systematic offsets.
-        dx=10 if x < width/2 else -24
-        dy=7 if y < (oy+200) else 5
-        c.drawString(x+dx,y+dy,str(item["n"]))
-    c.setFont(font,10)
-    label={"moon":"lune", "star":"étoile", "house":"maison"}[act.geometry["shape"]]
-    c.drawCentredString(width/2,177,f"Forme : {label} | du point 1 au {len(points)} puis au 1")
+    for (x, y), (tx, ty), p in zip(coords, positions, points):
+        c.setFillGray(.08)
+        c.circle(x, y, 4.1, fill=1, stroke=0)
+        c.setFont(bold, 11)
+        c.drawCentredString(tx, ty, str(p["n"]))
+
+
+def _freeze(value):
+    """Recursively eliminate mutable aliases across compose/draw and callers."""
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
+    """Validate a completely detached copy, then render with immutable data."""
+    copies = copy.deepcopy(activities)
+    verify_text_policy([a.as_dict() for a in copies], location="activités PDF")
+    errors = validate_collection(copies)
+    if errors:
+        raise ValueError("Activités PDF invalides : " + "; ".join(errors))
+    return tuple(replace(act, geometry=_freeze(act.geometry), answer=_freeze(act.answer))
+                 for act in copies)
+
+
+def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool) -> None:
+    """Render from a checked immutable snapshot to a new, safe file only.
+
+    A writer calling compose_page cannot alter geometry passed to _dots().
+    Separately, the original activities are never accessed during drawing.
+    """
+    rendering = _render_snapshot(activities)
+    book_snapshot = _freeze(copy.deepcopy(book))
+    verify_text_policy(book_snapshot, location="configuration PDF")
+    regular, bold = fonts()
+    width, height = book_snapshot["trim"]["width_in"] * 72, book_snapshot["trim"]["height_in"] * 72
+    with new_regular_file(path) as destination:
+        c = canvas.Canvas(destination, pagesize=(width, height), invariant=1, pageCompression=1)
+        c.setTitle(("CORRIGES" if answer_key else "DEMONSTRATION") + " - " + book_snapshot["title"])
+        c.setAuthor(book_snapshot["publisher"])
+        for index, act in enumerate(rendering, start=1):
+            layout = compose_page(act, book_snapshot, index=index, count=len(rendering), answer_key=answer_key,
+                                  regular=regular, bold=bold, text_width=_measure)
+            _draw_shell(c, layout, act, regular, bold, index, len(rendering))
+            if act.type == "maze":
+                _maze(c, act, layout.board, answer_key, bold)
+            elif act.type == "match":
+                _match(c, act, layout.board, answer_key)
+            elif act.type == "connect_dots":
+                _dots(c, act, layout.board, answer_key, bold)
+            else:
+                raise ValueError(f"Type de rendu absent : {act.type}")
+            c.showPage()
+        c.save()

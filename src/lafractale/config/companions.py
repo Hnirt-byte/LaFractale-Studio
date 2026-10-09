@@ -13,6 +13,9 @@ from typing import Any
 import os
 import re
 import stat
+
+from lafractale.security.text import (UnsafeEditorialText, canonical_text,
+                                     verify_text_policy)
 import yaml
 
 
@@ -114,8 +117,14 @@ def _catalog_snapshot(root: Path) -> tuple[dict[str, Any], str, tuple[str, ...]]
                 or not isinstance(entry, dict) or not isinstance(entry.get("name"), str)
                 or not entry["name"].strip()):
             raise CompanionError("Identité de personnage invalide dans le catalogue")
+        # All names/aliases and catalogue metadata must use the same Unicode
+        # policy as books, generated activities and extracted PDF text.
+        try:
+            verify_text_policy(entry, location=f"catalogue.{identity}")
+        except UnsafeEditorialText as exc:
+            raise CompanionError(str(exc)) from exc
         names.append(entry["name"].strip())
-    if len({name.casefold() for name in names}) != len(names):
+    if len({canonical_text(name) for name in names}) != len(names):
         raise CompanionError("Noms de compagnons dupliqués dans le catalogue")
     return characters, sha256(content).hexdigest(), tuple(sorted(names, key=str.casefold))
 
@@ -229,10 +238,11 @@ def verify_companion_text(root: Path, profile: CompanionProfile, book_data: Any,
     if book_data.get("companion") != expected_binding:
         raise CompanionError("Déclaration compagnon du livre modifiée ou non canonique")
     # A pending profile may NEVER exempt any reserved name, even when forged.
-    permitted_name = profile.name.casefold() if profile.selected else None
-    prohibited = [name for name in profile.reserved_names
-                  if permitted_name is None or name.casefold() != permitted_name]
-    for value in (*_all_strings(book_data), *_all_strings(plan)):
-        for name in prohibited:
-            if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", value, flags=re.IGNORECASE):
-                raise CompanionError(f"Compagnon non autorisé dans le texte éditorial : {name}")
+    permitted_name = canonical_text(profile.name) if profile.selected else None
+    prohibited = tuple(name for name in profile.reserved_names
+                       if permitted_name is None or canonical_text(name) != permitted_name)
+    try:
+        verify_text_policy(book_data, forbidden_names=prohibited, location="YAML")
+        verify_text_policy(plan, forbidden_names=prohibited, location="plan CSV")
+    except UnsafeEditorialText as exc:
+        raise CompanionError(str(exc)) from exc

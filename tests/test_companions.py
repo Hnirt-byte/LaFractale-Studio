@@ -42,7 +42,7 @@ def test_christmas_has_no_pip_anywhere_in_generated_files(tmp_path):
     assert any("Compagnon non choisi" in blocker for blocker in full_build_blockers(book))
     out = tmp_path / "christmas"
     build_demo(book, out)
-    assert audit_output(out) == []
+    assert audit_output(out, book=book) == []
     for path in (out / "activities.json", out / "manifest.json", out / "quality_report.json"):
         assert "pip" not in path.read_text(encoding="utf8").casefold()
     for name in ("interior.pdf", "answer_key.pdf"):
@@ -559,7 +559,7 @@ def test_security_failed_rebuild_preserves_last_valid_output(tmp_path):
         build_demo(book, out)
     after = {x.name: x.read_bytes() for x in out.glob("*.json")}
     assert after == before
-    assert audit_output(out) == []
+    assert audit_output(out, book=load_book(path)) == []
 
 
 def test_security_rejects_symlinked_plan_at_load(tmp_path):

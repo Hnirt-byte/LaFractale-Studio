@@ -7,10 +7,10 @@ Python >=3.11, `pip install -e '.[dev]'`. Exports PDF via ReportLab et aperçus 
 ```bash
 python -m lafractale validate books/halloween_2026/book.yaml
 python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/halloween-demo --seed 2026
-python -m lafractale qa dist/halloween-demo
+python -m lafractale qa dist/halloween-demo --book books/halloween_2026/book.yaml
 python -m lafractale validate books/christmas_2026/book.yaml
 python -m lafractale build-demo books/christmas_2026/book.yaml --out dist/christmas-demo
-python -m lafractale qa dist/christmas-demo
+python -m lafractale qa dist/christmas-demo --book books/christmas_2026/book.yaml
 python -m pytest -q
 ```
 

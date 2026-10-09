@@ -18,6 +18,6 @@ jobs:
       - run: python -m lafractale validate books/halloween_2026/book.yaml
       - run: python -m lafractale validate books/christmas_2026/book.yaml
       - run: python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/ci-halloween
-      - run: python -m lafractale qa dist/ci-halloween
+      - run: python -m lafractale qa dist/ci-halloween --book books/halloween_2026/book.yaml
       - run: python -m lafractale build-demo books/christmas_2026/book.yaml --out dist/ci-christmas
-      - run: python -m lafractale qa dist/ci-christmas
+      - run: python -m lafractale qa dist/ci-christmas --book books/christmas_2026/book.yaml

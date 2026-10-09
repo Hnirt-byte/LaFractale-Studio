@@ -9,7 +9,7 @@ from lafractale.export.builder import build_demo,audit_output
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser=argparse.ArgumentParser(prog="lafractale",description="Moteur LaFractale Studio V0.1 (démo non publiable)")
+    parser=argparse.ArgumentParser(prog="lafractale",description="Moteur LaFractale Studio (démo non publiable)")
     subs=parser.add_subparsers(dest="cmd",required=True)
     p_val=subs.add_parser("validate",help="Valider le YAML et le plan de pages")
     p_val.add_argument("book")
@@ -19,10 +19,11 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--seed",type=int,default=2026)
     p_qa=subs.add_parser("qa",help="Vérifier les artefacts d'une démo")
     p_qa.add_argument("out",type=Path)
+    p_qa.add_argument("--book",required=True,type=Path,help="YAML source de confiance obligatoire pour recalculer les noms réservés")
     args=parser.parse_args(argv)
     try:
         if args.cmd=="qa":
-            errors=audit_output(args.out)
+            errors=audit_output(args.out,book=load_book(args.book,require_plan=False))
             if errors:
                 print("QA ÉCHEC :\n"+"\n".join(errors),file=sys.stderr);return 2
             print("QA TECHNIQUE OK | approbation visuelle et KDP toujours en attente");return 0
@@ -41,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ConfigError("ASSEMBLAGE INTÉGRAL REFUSÉ : layouts et approbations prépresse V0.2+ indisponibles")
         out=args.out or (book.root/"dist"/book.book_id)
         report=build_demo(book,out,seed=args.seed)
-        errors=audit_output(out)
+        errors=audit_output(out,book=book)
         if errors:
             raise ConfigError("QA des artefacts :\n"+"\n".join(errors))
         print(f"DÉMO CRÉÉE : {out} | 3 fiches + 3 corrigés | logique VALIDÉE | revue visuelle EN ATTENTE")
