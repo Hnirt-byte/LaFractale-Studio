@@ -513,7 +513,12 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
             elif act.type == "match":
                 _match(c, act, layout.board, answer_key)
             elif act.type == "connect_dots":
-                _dots(c, act, layout.board, answer_key, bold, editorial)
+                # Preserve the historical callable seam exactly when C4 is disabled:
+                # security tests and extensions may wrap the five-argument renderer.
+                if editorial is None:
+                    _dots(c, act, layout.board, answer_key, bold)
+                else:
+                    _dots(c, act, layout.board, answer_key, bold, editorial)
             else:
                 raise ValueError(f"Type de rendu absent : {act.type}")
             c.showPage()
