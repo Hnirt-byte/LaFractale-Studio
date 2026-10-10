@@ -5,6 +5,7 @@
 **Précédence :** s'ajoute à B2-B et à `docs/SECURITY_CONTRACT_B2C1.md`. N'annule aucune protection C1. En cas de contradiction, stopper et soumettre un amendement avant écriture de code.
 **Provenance du présent document :** transcription fidèle de `LaFractale_B2-C2_CONTRAT_TECHNIQUE_v1.0.md` du pack de lancement B2-C2 v1.0 (SHA-256 `d95a8786f143b0d946c2bae4cca2a570c837046bfc25bf3a343d016539165e7f`). Le §0 a été exécuté avant toute écriture de code ; ses résultats sont consignés au §9. Les §§1 à 8 sont repris sans modification.
 **Base Git vérifiée :** `origin/main` = `8a28fb824a2ef895f1cf22913bc231b3d1dd0826` (merge de la PR #6), tree `7f358dab86c479668bf0aeb8eb5604aee519c578`, CI post-fusion SUCCESS (run `38043339204`).
+**Addendum applicable :** `docs/SECURITY_CONTRACT_B2C2_ADDENDUM_B_v1.1.md` (politique `halloween-pip-placement-v2`, ancre `intro_right`). Cet addendum prévaut sur les §2 et §3 du présent document **uniquement** pour la géométrie normative de la politique V2 et pour les invariants de politique qu'il liste explicitement ; il n'affaiblit aucun contrôle général (frontières de confiance, PIN externe, réapplication Book/route/spécifications, immutabilité, revalidation renderer **et** QA, autorité du manifeste recalculé, inventaire fermé, actifs protégés, refus avant écriture, oracles B2-B et B2-C1). La politique V1 `halloween-pip-placement-v1` est refusée explicitement.
 
 ## 0. Préflight impératif : ancrer la base C1
 
