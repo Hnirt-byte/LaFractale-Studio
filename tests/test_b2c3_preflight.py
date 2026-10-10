@@ -377,11 +377,15 @@ def test_tool_pass_separated_from_page_warn_no_kdp_ready(c2_out, tmp_path):
 # --------------------------------------------------------------------------
 # 15. C4 explicit preflight: static editorial recomputation + Pip bbox C2 V2
 # --------------------------------------------------------------------------
-def test_c4_profile_preflight_recomputes_variant_and_checks_pip_bbox(tmp_path):
+def test_c4_profile_preflight_recomputes_variant_and_checks_pip_bbox(tmp_path, monkeypatch):
     from lafractale.export.builder import build_demo
     from lafractale.editorial import EDITORIAL_HALLOWEEN_V1
     from lafractale.config.schema import load_book
 
+    # The trust replay compares PDF bytes. Pin the documented reproducibility
+    # epoch for this subprocess-facing C4 integration test rather than relying
+    # on the ambient CI environment.
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1780000000")
     out = tmp_path / "c4-out"
     build_demo(
         load_book(BOOK), out, illustration_routing="halloween-pip-demo-v1",

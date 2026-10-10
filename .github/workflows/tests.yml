@@ -7,6 +7,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Required for byte-identical trusted PDF replay and oracle proofs.
+      SOURCE_DATE_EPOCH: "1780000000"
     steps:
       - uses: actions/checkout@v4
         with:
