@@ -26,6 +26,16 @@ jobs:
           --proof dist/b2b-oracle-proof.json
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # Second non-regression oracle: B2-C2 must not change the C1 routed bytes.
+      - run: >-
+          python tools/verify_b2c1_oracle.py
+          --candidate-repo .
+          --reference-commit 8a28fb824a2ef895f1cf22913bc231b3d1dd0826
+          --require-head-tree
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+          --proof dist/b2c1-oracle-proof.json
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
       - run: python -m lafractale validate books/halloween_2026/book.yaml
       - run: python -m lafractale validate books/christmas_2026/book.yaml
       - run: python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/ci-halloween
@@ -44,11 +54,53 @@ jobs:
           --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      - run: >-
+          python -m lafractale build-demo books/halloween_2026/book.yaml
+          --out dist/ci-halloween-placed
+          --illustration-routing halloween-pip-demo-v1
+          --pip-placement halloween-pip-placement-v2
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      - run: >-
+          python -m lafractale qa dist/ci-halloween-placed
+          --book books/halloween_2026/book.yaml
+          --illustration-routing halloween-pip-demo-v1
+          --pip-placement halloween-pip-placement-v2
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # C2 stays strictly opt-in: claiming C2 on a C1 output must be refused.
+      - run: |
+          if python -m lafractale qa dist/ci-halloween-routed \
+            --book books/halloween_2026/book.yaml \
+            --illustration-routing halloween-pip-demo-v1 \
+            --pip-placement halloween-pip-placement-v2 \
+            --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"; then
+            echo "ERREUR : QA a accepté un placement C2 absent du manifeste" >&2
+            exit 1
+          fi
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # V2 replaced V1: the legacy policy identifier must be refused outright.
+      - run: |
+          if python -m lafractale build-demo books/halloween_2026/book.yaml \
+            --out dist/ci-halloween-v1-refused \
+            --illustration-routing halloween-pip-demo-v1 \
+            --pip-placement halloween-pip-placement-v1 \
+            --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"; then
+            echo "ERREUR : la politique de placement V1 a été acceptée" >&2
+            exit 1
+          fi
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
       - uses: actions/upload-artifact@v4
         with:
           name: b2c1-routed-proof
           path: |
             dist/b2b-oracle-proof.json
+            dist/b2c1-oracle-proof.json
             dist/ci-halloween-routed/previews/
+            dist/ci-halloween-placed/previews/
       - run: python -m lafractale build-demo books/christmas_2026/book.yaml --out dist/ci-christmas
       - run: python -m lafractale qa dist/ci-christmas --book books/christmas_2026/book.yaml

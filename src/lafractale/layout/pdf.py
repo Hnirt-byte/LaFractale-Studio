@@ -29,6 +29,8 @@ from lafractale.quality.checks import validate_collection
 from lafractale.security.text import verify_text_policy
 from lafractale.illustrations.registry import VerifiedArtwork, verify_approved_artwork, IllustrationError
 from lafractale.illustrations.routing import IllustrationRoute, verify_illustration_route
+from lafractale.illustrations.placement import (PipPlacementPlan, build_pip_placement_plan,
+    placed_composition, resolve_pip_placement_mode, verify_pip_placement_plan)
 from lafractale.story.plan import demo_specs
 
 
@@ -359,19 +361,41 @@ def _routed_render_snapshot(activities: list[Activity], *, approved_book: Book,
     return rendering
 
 
+def _page_layout(act: Activity, book_snapshot, *, index: int, count: int, answer_key: bool,
+                 regular: str, bold: str,
+                 placement: PipPlacementPlan | None):
+    """Compose one page, applying the canonical C2 placement when requested."""
+    layout = compose_page(act, book_snapshot, index=index, count=count, answer_key=answer_key,
+                          regular=regular, bold=bold, text_width=_measure)
+    if placement is None:
+        return layout
+    return placed_composition(layout, placement.anchor_for(act, demo_index=index),
+                              text_width=_measure)
+
+
 def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool,
               artwork: VerifiedArtwork | None = None,
               illustration_route: IllustrationRoute | None = None,
+              pip_placement: str | None = None,
               approved_book: Book | None = None,
               trusted_approvals_sha256: str | None = None) -> None:
     """Render from a checked immutable snapshot to a new, safe file only.
 
     A writer calling compose_page cannot alter geometry passed to _dots().
     Separately, the original activities are never accessed during drawing.
+    The optional C2 placement is named by policy string only; its plan is
+    recomputed from the verified Book, the canonical C1 route and the external
+    pin, and every page layout is validated before the destination file exists.
     """
     if artwork is not None and illustration_route is not None:
         raise IllustrationError("Visuel historique et route C1 mutuellement exclusifs")
+    if pip_placement is not None and illustration_route is None:
+        raise IllustrationError("Placement Pip exige la route C1 explicite et un PIN externe")
+    if pip_placement is not None and artwork is not None:
+        raise IllustrationError("Visuel historique et placement C2 mutuellement exclusifs")
+    placement_mode = resolve_pip_placement_mode(pip_placement)
     rendering: tuple[Activity, ...]
+    placement: PipPlacementPlan | None = None
     if artwork is not None:
         if approved_book is None or trusted_approvals_sha256 is None:
             raise IllustrationError("Source d'approbation indépendante obligatoire pour un visuel PDF")
@@ -392,6 +416,14 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
             activities, approved_book=approved_book, illustration_route=illustration_route,
             trusted_approvals_sha256=trusted_approvals_sha256,
         )
+        if placement_mode != "none":
+            assert isinstance(pip_placement, str)
+            placement = build_pip_placement_plan(
+                approved_book, illustration_route, policy_id=pip_placement,
+                trusted_approvals_sha256=trusted_approvals_sha256,
+            )
+            for index, act in enumerate(rendering, start=1):
+                placement.anchor_for(act, demo_index=index)
     elif approved_book is not None or trusted_approvals_sha256 is not None:
         raise IllustrationError("Paramètres graphiques partiels interdits")
     else:
@@ -400,15 +432,24 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
     verify_text_policy(book_snapshot, location="configuration PDF")
     regular, bold = fonts()
     width, height = book_snapshot["trim"]["width_in"] * 72, book_snapshot["trim"]["height_in"] * 72
+    # Compose and validate every page - including a C2 placement - BEFORE the
+    # destination file is opened or created, so a refusal never writes output.
+    layouts = tuple(
+        _page_layout(act, book_snapshot, index=index, count=len(rendering),
+                     answer_key=answer_key, regular=regular, bold=bold, placement=placement)
+        for index, act in enumerate(rendering, start=1)
+    )
+    page_artworks = tuple(
+        (illustration_route.artwork_for(act, demo_index=index)
+         if illustration_route is not None else artwork)
+        for index, act in enumerate(rendering, start=1)
+    )
     with new_regular_file(path) as destination:
         c = canvas.Canvas(destination, pagesize=(width, height), invariant=1, pageCompression=1)
         c.setTitle(("CORRIGES" if answer_key else "DEMONSTRATION") + " - " + book_snapshot["title"])
         c.setAuthor(book_snapshot["publisher"])
-        for index, act in enumerate(rendering, start=1):
-            layout = compose_page(act, book_snapshot, index=index, count=len(rendering), answer_key=answer_key,
-                                  regular=regular, bold=bold, text_width=_measure)
-            page_artwork = (illustration_route.artwork_for(act, demo_index=index)
-                            if illustration_route is not None else artwork)
+        for index, (act, layout, page_artwork) in enumerate(
+                zip(rendering, layouts, page_artworks, strict=True), start=1):
             _draw_shell(c, layout, act, regular, bold, index, len(rendering), artwork=page_artwork)
             if act.type == "maze":
                 _maze(c, act, layout.board, answer_key, bold)

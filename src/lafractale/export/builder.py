@@ -32,6 +32,8 @@ from lafractale.illustrations.registry import (IllustrationError, load_approved_
                                                verify_approved_artwork)
 from lafractale.illustrations.routing import (IllustrationRoute, build_illustration_route,
     resolve_illustration_mode, verify_illustration_route)
+from lafractale.illustrations.placement import (PipPlacementPlan, build_pip_placement_plan,
+    placed_composition, resolve_pip_placement_mode, verify_pip_placement_plan)
 from lafractale.export.securefs import parent_dirfd, validate_leaf_dir, audit_root_dirfd, UnsafeOutputPath
 
 
@@ -65,14 +67,19 @@ def _timestamp() -> str:
 def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
                             illustration_id: str | None = None,
                             illustration_routing: str | None = None,
+                            pip_placement: str | None = None,
                             trusted_approvals_sha256: str | None = None) -> dict:
     verify_companion_text(book.root, book.companion, book.data, book.plan)
     verify_book_snapshot(book)
     mode = resolve_illustration_mode(
         illustration_id, illustration_routing, trusted_approvals_sha256,
     )
+    placement_mode = resolve_pip_placement_mode(pip_placement)
+    if placement_mode != "none" and mode != "routed":
+        raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
     artwork = None
     route = None
+    placement: PipPlacementPlan | None = None
     if mode == "legacy_illustration":
         assert isinstance(illustration_id, str) and isinstance(trusted_approvals_sha256, str)
         artwork = load_approved_artwork(
@@ -83,6 +90,12 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
         route = build_illustration_route(
             book, policy_id=illustration_routing, trusted_approvals_sha256=trusted_approvals_sha256,
         )
+        if placement_mode != "none":
+            assert isinstance(pip_placement, str)
+            placement = build_pip_placement_plan(
+                book, route, policy_id=pip_placement,
+                trusted_approvals_sha256=trusted_approvals_sha256,
+            )
     errors = validate_plan_vocabulary(book)
     if errors:
         raise ConfigError("\n".join(errors))
@@ -104,7 +117,9 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
     kwargs = ({"artwork": artwork, "approved_book": book,
                "trusted_approvals_sha256": trusted_approvals_sha256} if artwork else
               {"illustration_route": route, "approved_book": book,
-               "trusted_approvals_sha256": trusted_approvals_sha256} if route else {})
+               "trusted_approvals_sha256": trusted_approvals_sha256,
+               **({"pip_placement": placement.policy_id} if placement is not None else {})}
+              if route else {})
     write_pdf(interior,activities,book.data,answer_key=False, **kwargs)
     write_pdf(answers,activities,book.data,answer_key=True, **kwargs)
     previews=out/"previews";previews.mkdir(exist_ok=True)
@@ -166,6 +181,9 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
         manifest["illustration"] = artwork.manifest_entry()
     elif route is not None:
         manifest["illustration_routing"] = route.manifest_entry()
+    if placement is not None:
+        # Opt-in C2 only: a dedicated key, never an implicit activation.
+        manifest["pip_placement"] = placement.manifest_entry()
     # Re-read the approved source at the last publication-adjacent step: a
     # post-load or mid-build mutation must never yield a trusted manifest.
     verify_companion_text(book.root, book.companion, book.data, book.plan)
@@ -178,6 +196,9 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
         assert isinstance(trusted_approvals_sha256, str)
         verify_illustration_route(book, route, policy_id=route.policy_id,
                                   trusted_approvals_sha256=trusted_approvals_sha256)
+        if placement is not None:
+            verify_pip_placement_plan(book, route, placement, policy_id=placement.policy_id,
+                                      trusted_approvals_sha256=trusted_approvals_sha256)
     # Rendered PDFs must not smuggle reserved names which were absent from
     # validated editorial source (including a renderer-level text injection).
     for filename in ("interior.pdf", "answer_key.pdf"):
@@ -197,6 +218,7 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
 def build_demo(book: Book, out: Path, *, seed: int = 2026,
                illustration_id: str | None = None,
                illustration_routing: str | None = None,
+               pip_placement: str | None = None,
                trusted_approvals_sha256: str | None = None) -> dict:
     """Build in a private directory and publish using anchored directory FDs.
 
@@ -222,9 +244,11 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026,
         try:
             report = _build_demo_unpublished(book, stage, seed=seed,
                 illustration_id=illustration_id, illustration_routing=illustration_routing,
+                pip_placement=pip_placement,
                 trusted_approvals_sha256=trusted_approvals_sha256)
             errors = audit_output(stage, book=book, illustration_id=illustration_id,
                                   illustration_routing=illustration_routing,
+                                  pip_placement=pip_placement,
                                   trusted_approvals_sha256=trusted_approvals_sha256)
             if errors:
                 raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
@@ -327,21 +351,57 @@ def _exact_output_inventory(out: Path, *, page_count: int, routed: bool = False)
     return errors
 
 
+def _page_collision_errors(page, region: tuple[float, float, float, float], *,
+                           location: str, tolerance: float = 0.05) -> list[str]:
+    """Refuse any text or vector drawing overlapping the placed image box.
+
+    Slot containment and region overlap checks are necessary but not sufficient:
+    content actually drawn on the page (footer rule, board frame, labels and
+    mechanic strokes) must not intersect the placed artwork either.
+    """
+    x0, y0, x1, y1 = region
+
+    def overlaps(box) -> bool:
+        try:
+            bx0, by0, bx1, by1 = (float(value) for value in tuple(box)[:4])
+        except (TypeError, ValueError):
+            return False
+        return (min(x1, bx1) - max(x0, bx0) > tolerance
+                and min(y1, by1) - max(y0, by0) > tolerance)
+
+    errors: list[str] = []
+    for word in page.get_text("words"):
+        if overlaps(word):
+            errors.append(f"PDF : texte en collision avec le visuel Pip {location}")
+            break
+    for drawing in page.get_drawings():
+        box = drawing.get("rect")
+        if box is not None and overlaps((box.x0, box.y0, box.x1, box.y1)):
+            errors.append(f"PDF : tracé vectoriel en collision avec le visuel Pip {location}")
+            break
+    return errors
+
+
 def audit_output(out: Path, *, book: Book | None = None,
                  illustration_id: str | None = None,
                  illustration_routing: str | None = None,
+                 pip_placement: str | None = None,
                  trusted_approvals_sha256: str | None = None) -> list[str]:
     """Audit only through a symlink-free, FD-anchored directory root."""
     if book is None:
         return ["Audit impossible : --book / contexte source de confiance obligatoire"]
     try:
-        resolve_illustration_mode(illustration_id, illustration_routing, trusted_approvals_sha256)
+        mode = resolve_illustration_mode(illustration_id, illustration_routing, trusted_approvals_sha256)
+        placement_mode = resolve_pip_placement_mode(pip_placement)
+        if placement_mode != "none" and mode != "routed":
+            raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
     except IllustrationError as exc:
         return [f"Audit impossible : contexte d'illustration non autorisé : {exc}"]
     try:
         with audit_root_dirfd(out) as anchored_root:
             return _audit_output_verified(anchored_root, book=book,
                 illustration_id=illustration_id, illustration_routing=illustration_routing,
+                pip_placement=pip_placement,
                 trusted_approvals_sha256=trusted_approvals_sha256)
     except (UnsafeOutputPath, OSError, IllustrationError) as exc:
         return [f"Répertoire d'audit ou approbation non autorisé : {exc}"]
@@ -350,6 +410,7 @@ def audit_output(out: Path, *, book: Book | None = None,
 def _audit_output_verified(out: Path, *, book: Book,
                            illustration_id: str | None = None,
                            illustration_routing: str | None = None,
+                           pip_placement: str | None = None,
                            trusted_approvals_sha256: str | None = None) -> list[str]:
     """Source policy comes from Book; the output FD cannot be a user symlink.
 
@@ -367,8 +428,12 @@ def _audit_output_verified(out: Path, *, book: Book,
         mode = resolve_illustration_mode(
             illustration_id, illustration_routing, trusted_approvals_sha256,
         )
+        placement_mode = resolve_pip_placement_mode(pip_placement)
+        if placement_mode != "none" and mode != "routed":
+            raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
         expected_artwork = None
         expected_route = None
+        expected_placement: PipPlacementPlan | None = None
         if mode == "legacy_illustration":
             assert isinstance(illustration_id, str) and isinstance(trusted_approvals_sha256, str)
             expected_artwork = load_approved_artwork(
@@ -380,6 +445,12 @@ def _audit_output_verified(out: Path, *, book: Book,
                 book, policy_id=illustration_routing,
                 trusted_approvals_sha256=trusted_approvals_sha256,
             )
+            if placement_mode != "none":
+                assert isinstance(pip_placement, str)
+                expected_placement = build_pip_placement_plan(
+                    book, expected_route, policy_id=pip_placement,
+                    trusted_approvals_sha256=trusted_approvals_sha256,
+                )
         expected_companion = {"status": companion.status, "id": companion.id,
                               "name": companion.render_name}
         trusted_source = {
@@ -441,13 +512,20 @@ def _audit_output_verified(out: Path, *, book: Book,
             raise UnsafeEditorialText("Manifeste : empreintes des noms réservés non conformes à la source")
         if expected_artwork is not None:
             if (manifest.get("illustration") != expected_artwork.manifest_entry()
-                    or "illustration_routing" in manifest):
+                    or "illustration_routing" in manifest or "pip_placement" in manifest):
                 raise UnsafeEditorialText("Illustration du manifeste non conforme à la source approuvée")
         elif expected_route is not None:
             if ("illustration" in manifest
                     or manifest.get("illustration_routing") != expected_route.manifest_entry()):
                 raise UnsafeEditorialText("Routage d'illustrations du manifeste non conforme")
-        elif "illustration" in manifest or "illustration_routing" in manifest:
+            if expected_placement is not None:
+                # C2 is opt-in: the manifest carries the recomputed plan or nothing.
+                if manifest.get("pip_placement") != expected_placement.manifest_entry():
+                    raise UnsafeEditorialText("Placement Pip du manifeste non conforme")
+            elif "pip_placement" in manifest:
+                raise UnsafeEditorialText("Placement Pip inattendu sans opt-in explicite")
+        elif ("illustration" in manifest or "illustration_routing" in manifest
+                or "pip_placement" in manifest):
             raise UnsafeEditorialText("Illustration inattendue dans le manifeste placeholder")
         if (manifest.get("book_id") != book.book_id
                 or manifest.get("target_pages") != book.pages
@@ -483,17 +561,31 @@ def _audit_output_verified(out: Path, *, book: Book,
     if type(audit_seed) is not int or not -(2**31) <= audit_seed < 2**31:
         return ["Seed de régénération invalide"]
     route_layouts = ()
+    answer_layouts = ()
     if expected_route is not None:
         if demo_pages != len(expected_route.bindings):
             return ["Manifest demo_pages incompatible avec la route C1"]
         expected_activities = [generate(spec, stable_seed(book.book_id, spec.id, audit_seed))
                                for spec in demo_specs(book)]
         regular, bold = fonts()
-        route_layouts = tuple(
-            compose_page(activity, book.data, index=index, count=len(expected_activities),
-                         answer_key=False, regular=regular, bold=bold, text_width=_measure)
-            for index, activity in enumerate(expected_activities, 1)
-        )
+
+        def _trusted_layouts(answer_key: bool):
+            """Recompute the trusted composition of one PDF; C2 slot included."""
+            layouts = []
+            for index, activity in enumerate(expected_activities, 1):
+                layout = compose_page(activity, book.data, index=index,
+                                      count=len(expected_activities), answer_key=answer_key,
+                                      regular=regular, bold=bold, text_width=_measure)
+                if expected_placement is not None:
+                    layout = placed_composition(
+                        layout, expected_placement.anchor_for(activity, demo_index=index),
+                        text_width=_measure,
+                    )
+                layouts.append(layout)
+            return tuple(layouts)
+
+        route_layouts = _trusted_layouts(False)
+        answer_layouts = _trusted_layouts(True)
     outputs = manifest.get("outputs")
     if not isinstance(outputs, dict):
         return ["Manifest outputs invalide : objet JSON attendu"]
@@ -557,7 +649,9 @@ def _audit_output_verified(out: Path, *, book: Book,
                                     x0, y0, x1, y1 = bbox
                                     if x1 <= x0 or y1 <= y0:
                                         raise ValueError("BBox routée vide")
-                                    slot = route_layouts[index].companion_slot
+                                    trusted_layouts = (answer_layouts if name == "answer_key"
+                                                       else route_layouts)
+                                    slot = trusted_layouts[index].companion_slot
                                     scale = min((slot.width - 8) / expected_page_artwork.width,
                                                 (slot.height - 6) / expected_page_artwork.height)
                                     width = expected_page_artwork.width * scale
@@ -577,6 +671,9 @@ def _audit_output_verified(out: Path, *, book: Book,
                                     dpi_y = 72 * pixels.height / (y1 - y0)
                                     if min(dpi_x, dpi_y) < 299.99:
                                         errors.append(f"PDF : résolution C1 insuffisante {name} p{index+1}")
+                                    # The slot is correct AND empty of other drawn content.
+                                    errors.extend(_page_collision_errors(
+                                        page, expected_slot, location=f"{name} p{index+1}"))
                                 elif (len(bbox) != 4 or bbox[0] < page.rect.width * .60
                                       or bbox[2] > page.rect.width - 25 or bbox[1] < 25
                                       or bbox[3] > page.rect.height * .32):
@@ -609,6 +706,7 @@ def _audit_output_verified(out: Path, *, book: Book,
                 _build_demo_unpublished(
                     book, canonical, seed=replay_seed, illustration_id=illustration_id,
                     illustration_routing=illustration_routing,
+                    pip_placement=pip_placement,
                     trusted_approvals_sha256=trusted_approvals_sha256,
                 )
                 expected_manifest = loads_strict((canonical / "manifest.json").read_bytes())
@@ -700,6 +798,10 @@ def _audit_output_verified(out: Path, *, book: Book,
             verify_illustration_route(book, expected_route,
                 policy_id=expected_route.policy_id,
                 trusted_approvals_sha256=trusted_approvals_sha256)
+            if expected_placement is not None:
+                verify_pip_placement_plan(book, expected_route, expected_placement,
+                    policy_id=expected_placement.policy_id,
+                    trusted_approvals_sha256=trusted_approvals_sha256)
         except (IllustrationError, ConfigError, ValueError) as exc:
             errors.append(f"Route d'illustrations modifiée pendant l'audit : {exc}")
     auto_checks = report.get("auto_checks")
