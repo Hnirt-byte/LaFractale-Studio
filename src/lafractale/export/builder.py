@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib
 import json
+import math
 import re
 import copy
 import secrets
@@ -25,9 +26,12 @@ from lafractale.security.text import (verify_text_policy, blocked_name_fingerpri
                                      parse_fingerprints, UnsafeEditorialText)
 from lafractale.security.strict_json import loads_strict
 from lafractale.quality.checks import validate_collection
-from lafractale.layout.pdf import write_pdf
+from lafractale.layout.pdf import write_pdf, fonts, _measure
+from lafractale.layout.composition import compose_page
 from lafractale.illustrations.registry import (IllustrationError, load_approved_artwork,
                                                verify_approved_artwork)
+from lafractale.illustrations.routing import (IllustrationRoute, build_illustration_route,
+    resolve_illustration_mode, verify_illustration_route)
 from lafractale.export.securefs import parent_dirfd, validate_leaf_dir, audit_root_dirfd, UnsafeOutputPath
 
 
@@ -60,13 +64,25 @@ def _timestamp() -> str:
 
 def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
                             illustration_id: str | None = None,
+                            illustration_routing: str | None = None,
                             trusted_approvals_sha256: str | None = None) -> dict:
     verify_companion_text(book.root, book.companion, book.data, book.plan)
     verify_book_snapshot(book)
-    if (illustration_id is None) != (trusted_approvals_sha256 is None):
-        raise IllustrationError("Visuel et empreinte externe doivent être fournis ensemble")
-    artwork = (load_approved_artwork(book, illustration_id, trusted_approvals_sha256=trusted_approvals_sha256)
-               if illustration_id is not None else None)
+    mode = resolve_illustration_mode(
+        illustration_id, illustration_routing, trusted_approvals_sha256,
+    )
+    artwork = None
+    route = None
+    if mode == "legacy_illustration":
+        assert isinstance(illustration_id, str) and isinstance(trusted_approvals_sha256, str)
+        artwork = load_approved_artwork(
+            book, illustration_id, trusted_approvals_sha256=trusted_approvals_sha256,
+        )
+    elif mode == "routed":
+        assert isinstance(illustration_routing, str) and isinstance(trusted_approvals_sha256, str)
+        route = build_illustration_route(
+            book, policy_id=illustration_routing, trusted_approvals_sha256=trusted_approvals_sha256,
+        )
     errors = validate_plan_vocabulary(book)
     if errors:
         raise ConfigError("\n".join(errors))
@@ -86,16 +102,21 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     interior=out/"interior.pdf";answers=out/"answer_key.pdf"
     kwargs = ({"artwork": artwork, "approved_book": book,
-               "trusted_approvals_sha256": trusted_approvals_sha256} if artwork else {})
+               "trusted_approvals_sha256": trusted_approvals_sha256} if artwork else
+              {"illustration_route": route, "approved_book": book,
+               "trusted_approvals_sha256": trusted_approvals_sha256} if route else {})
     write_pdf(interior,activities,book.data,answer_key=False, **kwargs)
     write_pdf(answers,activities,book.data,answer_key=True, **kwargs)
     previews=out/"previews";previews.mkdir(exist_ok=True)
-    with fitz.open(interior) as pdf:
-        if len(pdf)!=len(activities):
-            raise RuntimeError("Pagination PDF incorrecte")
-        for i,page in enumerate(pdf,1):
-            pix=page.get_pixmap(matrix=fitz.Matrix(1.4,1.4),alpha=False)
-            pix.save(str(previews/f"page_{i:02d}.png"))
+    preview_sources = (("interior", interior), ("answer_key", answers)) if route else (("", interior),)
+    for label, pdf_path in preview_sources:
+        with fitz.open(pdf_path) as pdf:
+            if len(pdf)!=len(activities):
+                raise RuntimeError("Pagination PDF incorrecte")
+            for i,page in enumerate(pdf,1):
+                pix=page.get_pixmap(matrix=fitz.Matrix(1.4,1.4),alpha=False)
+                name = f"{label}_page_{i:02d}.png" if route else f"page_{i:02d}.png"
+                pix.save(str(previews/name))
     with fitz.open(answers) as pdf:
         if len(pdf)!=len(activities):
             raise RuntimeError("Pagination du corrigé incorrecte")
@@ -114,7 +135,7 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
         "blocking_for_publication":[
             "Fiches non revues visuellement et pédagogiquement",
             ("Visuel monochrome intégré uniquement à la démo ; revue des droits et du prépresse KDP en attente"
-             if artwork is not None else
+             if artwork is not None or route is not None else
              f"Variantes graphiques de {companion.render_name} non approuvées (référence non dessinée)"
              if companion.selected else "Compagnon non sélectionné : illustrations en attente"),
             "Droits de la référence graphique non documentés" if assets else "Assets graphiques non validés",
@@ -143,6 +164,8 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
               "publication_approved":False}
     if artwork is not None:
         manifest["illustration"] = artwork.manifest_entry()
+    elif route is not None:
+        manifest["illustration_routing"] = route.manifest_entry()
     # Re-read the approved source at the last publication-adjacent step: a
     # post-load or mid-build mutation must never yield a trusted manifest.
     verify_companion_text(book.root, book.companion, book.data, book.plan)
@@ -151,6 +174,10 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
         raise ConfigError("Compagnon modifié pendant la génération")
     if artwork is not None:
         verify_approved_artwork(book, artwork, trusted_approvals_sha256=trusted_approvals_sha256)
+    elif route is not None:
+        assert isinstance(trusted_approvals_sha256, str)
+        verify_illustration_route(book, route, policy_id=route.policy_id,
+                                  trusted_approvals_sha256=trusted_approvals_sha256)
     # Rendered PDFs must not smuggle reserved names which were absent from
     # validated editorial source (including a renderer-level text injection).
     for filename in ("interior.pdf", "answer_key.pdf"):
@@ -169,6 +196,7 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
 
 def build_demo(book: Book, out: Path, *, seed: int = 2026,
                illustration_id: str | None = None,
+               illustration_routing: str | None = None,
                trusted_approvals_sha256: str | None = None) -> dict:
     """Build in a private directory and publish using anchored directory FDs.
 
@@ -193,8 +221,10 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026,
         published = False
         try:
             report = _build_demo_unpublished(book, stage, seed=seed,
-                illustration_id=illustration_id, trusted_approvals_sha256=trusted_approvals_sha256)
+                illustration_id=illustration_id, illustration_routing=illustration_routing,
+                trusted_approvals_sha256=trusted_approvals_sha256)
             errors = audit_output(stage, book=book, illustration_id=illustration_id,
+                                  illustration_routing=illustration_routing,
                                   trusted_approvals_sha256=trusted_approvals_sha256)
             if errors:
                 raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
@@ -234,7 +264,7 @@ _AUDITED_ROOT_FILES = frozenset({
 })
 
 
-def _exact_output_inventory(out: Path, *, page_count: int) -> list[str]:
+def _exact_output_inventory(out: Path, *, page_count: int, routed: bool = False) -> list[str]:
     """Check all root and preview entries through directory FDs, without following links.
 
     `out` is already `/proc/self/fd/<fd>` from audit_root_dirfd. We duplicate
@@ -244,7 +274,9 @@ def _exact_output_inventory(out: Path, *, page_count: int) -> list[str]:
     errors: list[str] = []
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     expected_root = _AUDITED_ROOT_FILES | {"previews"}
-    expected_previews = {f"page_{i:02d}.png" for i in range(1, page_count + 1)}
+    expected_previews = ({f"{kind}_page_{i:02d}.png" for kind in ("interior", "answer_key")
+                         for i in range(1, page_count + 1)} if routed else
+                         {f"page_{i:02d}.png" for i in range(1, page_count + 1)})
 
     def inspect(fd: int, expected: set[str] | frozenset[str], *, root: bool) -> set[str]:
         location = "racine" if root else "previews/"
@@ -297,16 +329,19 @@ def _exact_output_inventory(out: Path, *, page_count: int) -> list[str]:
 
 def audit_output(out: Path, *, book: Book | None = None,
                  illustration_id: str | None = None,
+                 illustration_routing: str | None = None,
                  trusted_approvals_sha256: str | None = None) -> list[str]:
     """Audit only through a symlink-free, FD-anchored directory root."""
     if book is None:
         return ["Audit impossible : --book / contexte source de confiance obligatoire"]
-    if (illustration_id is None) != (trusted_approvals_sha256 is None):
-        return ["Audit impossible : identifiant et SHA d'approbation requis ensemble"]
+    try:
+        resolve_illustration_mode(illustration_id, illustration_routing, trusted_approvals_sha256)
+    except IllustrationError as exc:
+        return [f"Audit impossible : contexte d'illustration non autorisé : {exc}"]
     try:
         with audit_root_dirfd(out) as anchored_root:
             return _audit_output_verified(anchored_root, book=book,
-                illustration_id=illustration_id,
+                illustration_id=illustration_id, illustration_routing=illustration_routing,
                 trusted_approvals_sha256=trusted_approvals_sha256)
     except (UnsafeOutputPath, OSError, IllustrationError) as exc:
         return [f"Répertoire d'audit ou approbation non autorisé : {exc}"]
@@ -314,6 +349,7 @@ def audit_output(out: Path, *, book: Book | None = None,
 
 def _audit_output_verified(out: Path, *, book: Book,
                            illustration_id: str | None = None,
+                           illustration_routing: str | None = None,
                            trusted_approvals_sha256: str | None = None) -> list[str]:
     """Source policy comes from Book; the output FD cannot be a user symlink.
 
@@ -328,9 +364,22 @@ def _audit_output_verified(out: Path, *, book: Book,
                            if not companion.selected or
                            name.casefold() != companion.render_name.casefold())
         trusted_fingerprints = blocked_name_fingerprints(prohibited)
-        expected_artwork = (load_approved_artwork(book, illustration_id,
-                            trusted_approvals_sha256=trusted_approvals_sha256)
-                            if illustration_id is not None else None)
+        mode = resolve_illustration_mode(
+            illustration_id, illustration_routing, trusted_approvals_sha256,
+        )
+        expected_artwork = None
+        expected_route = None
+        if mode == "legacy_illustration":
+            assert isinstance(illustration_id, str) and isinstance(trusted_approvals_sha256, str)
+            expected_artwork = load_approved_artwork(
+                book, illustration_id, trusted_approvals_sha256=trusted_approvals_sha256,
+            )
+        elif mode == "routed":
+            assert isinstance(illustration_routing, str) and isinstance(trusted_approvals_sha256, str)
+            expected_route = build_illustration_route(
+                book, policy_id=illustration_routing,
+                trusted_approvals_sha256=trusted_approvals_sha256,
+            )
         expected_companion = {"status": companion.status, "id": companion.id,
                               "name": companion.render_name}
         trusted_source = {
@@ -346,18 +395,22 @@ def _audit_output_verified(out: Path, *, book: Book,
     # Fail closed BEFORE reading outputs or replaying PDFs. The manifest and
     # its checksums cannot authorize extra files, folders or symlinks.
     try:
-        inventory_errors = _exact_output_inventory(out, page_count=len(demo_specs(book)))
+        inventory_errors = _exact_output_inventory(
+            out, page_count=len(demo_specs(book)), routed=expected_route is not None,
+        )
     except (OSError, ValueError, RuntimeError, ConfigError) as exc:
         return [f"Inventaire de sortie impossible : {exc}"]
     if inventory_errors:
         return inventory_errors
     expected_outputs = {"interior.pdf", "answer_key.pdf", "activities.json", "quality_report.json"}
     errors: list[str] = []
-    expected_pixel_digest = None
-    if expected_artwork is not None:
-        with Image.open(BytesIO(expected_artwork.pixels)) as approved_pixels:
+    def artwork_pixel_digest(artwork) -> str:
+        with Image.open(BytesIO(artwork.pixels)) as approved_pixels:
             approved_pixels.load()
-            expected_pixel_digest = hashlib.sha256(approved_pixels.tobytes()).hexdigest()
+            return hashlib.sha256(approved_pixels.tobytes()).hexdigest()
+
+    expected_pixel_digest = (artwork_pixel_digest(expected_artwork)
+                             if expected_artwork is not None else None)
     manifest_path = out / "manifest.json"
     report_path = out / "quality_report.json"
     for path in (manifest_path, report_path):
@@ -386,8 +439,16 @@ def _audit_output_verified(out: Path, *, book: Book,
         if (set(security) != {"unicode_policy", "blocked_name_fingerprints"}
                 or manifest_fingerprints != trusted_fingerprints):
             raise UnsafeEditorialText("Manifeste : empreintes des noms réservés non conformes à la source")
-        if manifest.get("illustration") != (expected_artwork.manifest_entry() if expected_artwork else None):
-            raise UnsafeEditorialText("Illustration du manifeste non conforme à la source approuvée")
+        if expected_artwork is not None:
+            if (manifest.get("illustration") != expected_artwork.manifest_entry()
+                    or "illustration_routing" in manifest):
+                raise UnsafeEditorialText("Illustration du manifeste non conforme à la source approuvée")
+        elif expected_route is not None:
+            if ("illustration" in manifest
+                    or manifest.get("illustration_routing") != expected_route.manifest_entry()):
+                raise UnsafeEditorialText("Routage d'illustrations du manifeste non conforme")
+        elif "illustration" in manifest or "illustration_routing" in manifest:
+            raise UnsafeEditorialText("Illustration inattendue dans le manifeste placeholder")
         if (manifest.get("book_id") != book.book_id
                 or manifest.get("target_pages") != book.pages
                 or manifest.get("companion") != expected_companion
@@ -415,8 +476,24 @@ def _audit_output_verified(out: Path, *, book: Book,
     demo_pages = manifest.get("demo_pages")
     if not isinstance(demo_pages, int) or isinstance(demo_pages, bool) or not 1 <= demo_pages <= 50:
         return ["Manifest demo_pages invalide"]
+    assert isinstance(demo_pages, int)
     if manifest.get("publication_approved") is not False:
         return ["Manifest publication_approved doit être false"]
+    audit_seed = manifest.get("seed")
+    if type(audit_seed) is not int or not -(2**31) <= audit_seed < 2**31:
+        return ["Seed de régénération invalide"]
+    route_layouts = ()
+    if expected_route is not None:
+        if demo_pages != len(expected_route.bindings):
+            return ["Manifest demo_pages incompatible avec la route C1"]
+        expected_activities = [generate(spec, stable_seed(book.book_id, spec.id, audit_seed))
+                               for spec in demo_specs(book)]
+        regular, bold = fonts()
+        route_layouts = tuple(
+            compose_page(activity, book.data, index=index, count=len(expected_activities),
+                         answer_key=False, regular=regular, bold=bold, text_width=_measure)
+            for index, activity in enumerate(expected_activities, 1)
+        )
     outputs = manifest.get("outputs")
     if not isinstance(outputs, dict):
         return ["Manifest outputs invalide : objet JSON attendu"]
@@ -453,28 +530,59 @@ def _audit_output_verified(out: Path, *, book: Book,
                 if len(pdf) != manifest.get("demo_pages"):
                     errors.append(f"PDF : mauvais nombre de pages {name}")
                 for index, page in enumerate(pdf):
+                    expected_page_artwork = (expected_route.bindings[index].artwork
+                                              if expected_route is not None and index < len(expected_route.bindings)
+                                              else expected_artwork)
                     images = page.get_image_info(xrefs=True)
-                    if len(images) != (1 if expected_artwork else 0):
+                    if len(images) != (1 if expected_page_artwork else 0):
                         errors.append(f"PDF : illustrations manquantes ou inattendues {name} p{index+1}")
                     for image in images:
-                        if expected_artwork is not None:
+                        if expected_page_artwork is not None:
                             try:
                                 xref = image.get("xref", 0)
                                 if not xref:
-                                    # get_image_info without xrefs cannot prove provenance.
                                     raise ValueError("Image PDF sans xref vérifiable")
                                 pixels = fitz.Pixmap(pdf, xref)
-                                if (pixels.width != expected_artwork.width or
-                                    pixels.height != expected_artwork.height or pixels.n != 1 or
-                                    pixels.alpha or hashlib.sha256(pixels.samples).hexdigest() != expected_pixel_digest):
+                                expected_digest = (artwork_pixel_digest(expected_page_artwork)
+                                                   if expected_route is not None else expected_pixel_digest)
+                                if (pixels.width != expected_page_artwork.width or
+                                    pixels.height != expected_page_artwork.height or pixels.n != 1 or
+                                    pixels.alpha or hashlib.sha256(pixels.samples).hexdigest() != expected_digest):
                                     errors.append(f"PDF : pixels graphiques différents de la source approuvée {name} p{index+1}")
+                                bbox = image.get("bbox", ())
+                                if expected_route is not None:
+                                    if len(bbox) != 4 or not all(isinstance(value, (int, float)) and math.isfinite(value)
+                                                                 for value in bbox):
+                                        raise ValueError("BBox routée invalide")
+                                    x0, y0, x1, y1 = bbox
+                                    if x1 <= x0 or y1 <= y0:
+                                        raise ValueError("BBox routée vide")
+                                    slot = route_layouts[index].companion_slot
+                                    scale = min((slot.width - 8) / expected_page_artwork.width,
+                                                (slot.height - 6) / expected_page_artwork.height)
+                                    width = expected_page_artwork.width * scale
+                                    height = expected_page_artwork.height * scale
+                                    expected_x = slot.x + (slot.width - width) / 2
+                                    expected_y = page.rect.height - (slot.y + (slot.height - height) / 2 + height)
+                                    predicted = (expected_x, expected_y, expected_x + width, expected_y + height)
+                                    expected_slot = (slot.x, page.rect.height - slot.top,
+                                                     slot.right, page.rect.height - slot.y)
+                                    if (x0 < expected_slot[0] - .05 or y0 < expected_slot[1] - .05
+                                            or x1 > expected_slot[2] + .05 or y1 > expected_slot[3] + .05):
+                                        errors.append(f"PDF : illustration hors slot C1 {name} p{index+1}")
+                                    if any(abs(actual - predicted_value) > .25
+                                           for actual, predicted_value in zip(bbox, predicted, strict=True)):
+                                        errors.append(f"PDF : bbox C1 différent du rendu attendu {name} p{index+1}")
+                                    dpi_x = 72 * pixels.width / (x1 - x0)
+                                    dpi_y = 72 * pixels.height / (y1 - y0)
+                                    if min(dpi_x, dpi_y) < 299.99:
+                                        errors.append(f"PDF : résolution C1 insuffisante {name} p{index+1}")
+                                elif (len(bbox) != 4 or bbox[0] < page.rect.width * .60
+                                      or bbox[2] > page.rect.width - 25 or bbox[1] < 25
+                                      or bbox[3] > page.rect.height * .32):
+                                    errors.append(f"PDF : illustration hors zone autorisée {name} p{index+1}")
                             except Exception as exc:
                                 errors.append(f"PDF : image non vérifiable {name} p{index+1}: {exc}")
-                        bbox = image.get("bbox", ())
-                        if (len(bbox) != 4 or bbox[0] < page.rect.width * .60
-                                or bbox[2] > page.rect.width - 25 or bbox[1] < 25
-                                or bbox[3] > page.rect.height * .32):
-                            errors.append(f"PDF : illustration hors zone autorisée {name} p{index+1}")
                     extracted = page.get_text()
                     if not extracted.strip():
                         errors.append(f"PDF : texte absent {name} p{index + 1}")
@@ -500,6 +608,7 @@ def _audit_output_verified(out: Path, *, book: Book,
                 canonical = Path(trusted_work) / "replay"
                 _build_demo_unpublished(
                     book, canonical, seed=replay_seed, illustration_id=illustration_id,
+                    illustration_routing=illustration_routing,
                     trusted_approvals_sha256=trusted_approvals_sha256,
                 )
                 expected_manifest = loads_strict((canonical / "manifest.json").read_bytes())
@@ -549,31 +658,34 @@ def _audit_output_verified(out: Path, *, book: Book,
     if previews.is_symlink() or not previews.is_dir():
         errors.append("Dossier d'aperçus absent ou invalide")
     else:
-        preview_files = [path for path in previews.glob("page_*.png") if path.is_file() and not path.is_symlink()]
-        if len(preview_files) != manifest.get("demo_pages"):
+        preview_sources = (("interior", out / "interior.pdf"), ("answer_key", out / "answer_key.pdf")) if expected_route else (("", out / "interior.pdf"),)
+        expected_preview_count = manifest.get("demo_pages") * len(preview_sources)
+        preview_files = [path for path in previews.iterdir() if path.is_file() and not path.is_symlink()]
+        if len(preview_files) != expected_preview_count:
             errors.append("Nombre d'aperçus incorrect")
         else:
             # Preview hashes in an unsigned manifest are NOT authoritative.
-            # Compare decoded preview pixels to a fresh render of the PDF.
+            # Compare decoded preview pixels to a fresh render of their own PDF.
             try:
-                with fitz.open(out / "interior.pdf") as src:
-                    for index, page in enumerate(src, 1):
-                        path = previews / f"page_{index:02d}.png"
-                        if path.is_symlink() or not path.is_file() or path.stat().st_size > 12_000_000:
-                            raise ValueError(f"Aperçu interdit : {path.name}")
-                        expected_preview = page.get_pixmap(matrix=fitz.Matrix(1.4, 1.4), alpha=False)
-                        # Bounds-check PNG IHDR before allocating decoder buffers.
-                        with path.open("rb") as f:
-                            header = f.read(24)
-                        if (len(header) < 24 or not header.startswith(b"\x89PNG\r\n\x1a\n")
-                                or int.from_bytes(header[16:20], "big") != expected_preview.width
-                                or int.from_bytes(header[20:24], "big") != expected_preview.height):
-                            raise ValueError(f"Dimensions/format d'aperçu invalides : {path.name}")
-                        actual_preview = fitz.Pixmap(str(path))
-                        if (actual_preview.width != expected_preview.width or
-                                actual_preview.height != expected_preview.height or
-                                actual_preview.samples != expected_preview.samples):
-                            raise ValueError(f"Pixels d'aperçu différents du PDF : {path.name}")
+                for label, pdf_path in preview_sources:
+                    with fitz.open(pdf_path) as src:
+                        for index, page in enumerate(src, 1):
+                            name = f"{label}_page_{index:02d}.png" if expected_route else f"page_{index:02d}.png"
+                            path = previews / name
+                            if path.is_symlink() or not path.is_file() or path.stat().st_size > 12_000_000:
+                                raise ValueError(f"Aperçu interdit : {path.name}")
+                            expected_preview = page.get_pixmap(matrix=fitz.Matrix(1.4, 1.4), alpha=False)
+                            with path.open("rb") as f:
+                                header = f.read(24)
+                            if (len(header) < 24 or not header.startswith(b"\x89PNG\r\n\x1a\n")
+                                    or int.from_bytes(header[16:20], "big") != expected_preview.width
+                                    or int.from_bytes(header[20:24], "big") != expected_preview.height):
+                                raise ValueError(f"Dimensions/format d'aperçu invalides : {path.name}")
+                            actual_preview = fitz.Pixmap(str(path))
+                            if (actual_preview.width != expected_preview.width or
+                                    actual_preview.height != expected_preview.height or
+                                    actual_preview.samples != expected_preview.samples):
+                                raise ValueError(f"Pixels d'aperçu différents du PDF : {path.name}")
             except (ValueError, OSError, RuntimeError) as exc:
                 errors.append(f"Aperçus non conformes au PDF : {exc}")
     if expected_artwork is not None:
@@ -582,6 +694,14 @@ def _audit_output_verified(out: Path, *, book: Book,
                 trusted_approvals_sha256=trusted_approvals_sha256)
         except (IllustrationError, ConfigError, ValueError) as exc:
             errors.append(f"Illustration modifiée pendant l'audit : {exc}")
+    elif expected_route is not None:
+        try:
+            assert isinstance(trusted_approvals_sha256, str)
+            verify_illustration_route(book, expected_route,
+                policy_id=expected_route.policy_id,
+                trusted_approvals_sha256=trusted_approvals_sha256)
+        except (IllustrationError, ConfigError, ValueError) as exc:
+            errors.append(f"Route d'illustrations modifiée pendant l'audit : {exc}")
     auto_checks = report.get("auto_checks")
     if not isinstance(auto_checks, dict):
         errors.append("Rapport qualité auto_checks invalide")
