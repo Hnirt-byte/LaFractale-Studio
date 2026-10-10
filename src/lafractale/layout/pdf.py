@@ -26,6 +26,7 @@ from lafractale.export.securefs import new_regular_file
 from lafractale.quality.checks import validate_collection
 from lafractale.security.text import verify_text_policy
 from lafractale.illustrations.registry import VerifiedArtwork, verify_approved_artwork, IllustrationError
+from lafractale.illustrations.routing import IllustrationRoute, verify_illustration_route
 from lafractale.config.schema import Book
 
 
@@ -323,18 +324,30 @@ def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
 
 
 def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool,
-              artwork: VerifiedArtwork | None = None, approved_book: Book | None = None,
+              artwork: VerifiedArtwork | None = None,
+              illustration_route: IllustrationRoute | None = None,
+              approved_book: Book | None = None,
               trusted_approvals_sha256: str | None = None) -> None:
     """Render from a checked immutable snapshot to a new, safe file only.
 
     A writer calling compose_page cannot alter geometry passed to _dots().
     Separately, the original activities are never accessed during drawing.
     """
+    if artwork is not None and illustration_route is not None:
+        raise IllustrationError("Visuel historique et route C1 mutuellement exclusifs")
     if artwork is not None:
         if approved_book is None or trusted_approvals_sha256 is None:
             raise IllustrationError("Source d'approbation indépendante obligatoire pour un visuel PDF")
         verify_approved_artwork(approved_book, artwork,
                                 trusted_approvals_sha256=trusted_approvals_sha256)
+        if approved_book.data != book:
+            raise IllustrationError("Configuration PDF non conforme au livre approuvé")
+    elif illustration_route is not None:
+        if approved_book is None or trusted_approvals_sha256 is None:
+            raise IllustrationError("Source d'approbation indépendante obligatoire pour une route PDF")
+        verify_illustration_route(approved_book, illustration_route,
+                                  policy_id=illustration_route.policy_id,
+                                  trusted_approvals_sha256=trusted_approvals_sha256)
         if approved_book.data != book:
             raise IllustrationError("Configuration PDF non conforme au livre approuvé")
     elif approved_book is not None or trusted_approvals_sha256 is not None:
@@ -351,7 +364,9 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
         for index, act in enumerate(rendering, start=1):
             layout = compose_page(act, book_snapshot, index=index, count=len(rendering), answer_key=answer_key,
                                   regular=regular, bold=bold, text_width=_measure)
-            _draw_shell(c, layout, act, regular, bold, index, len(rendering), artwork=artwork)
+            page_artwork = (illustration_route.artwork_for(act, demo_index=index)
+                            if illustration_route is not None else artwork)
+            _draw_shell(c, layout, act, regular, bold, index, len(rendering), artwork=page_artwork)
             if act.type == "maze":
                 _maze(c, act, layout.board, answer_key, bold)
             elif act.type == "match":
