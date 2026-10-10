@@ -29,8 +29,9 @@ from lafractale.illustrations.placement import (
     PIP_PLACEMENT_HALLOWEEN_V2,
     build_pip_placement_plan,
 )
-from lafractale.layout.composition import compose_page
-from lafractale.layout.pdf import _measure, fonts
+from lafractale.layout.composition import Rect, compose_page
+from lafractale.layout.pdf import (_labels_for_points, _measure, _segment_intersects_rect,
+                                   fonts)
 from lafractale.quality.checks import validate_collection
 from lafractale.story.plan import demo_specs
 
@@ -225,3 +226,25 @@ def test_editorial_profile_refuses_without_routing_and_placement(tmp_path):
                    illustration_routing=ROUTING_HALLOWEEN_PIP_DEMO_V1,
                    editorial_profile=EDITORIAL_HALLOWEEN_V1,
                    trusted_approvals_sha256=PIN)
+
+
+def test_c4_point_labels_never_intersect_the_closed_solution_path():
+    """C4 fixes the inherited label/path collision without changing legacy output."""
+    book = _book()
+    act = next(activity for activity in _transformed(book) if activity.type == "connect_dots")
+    regular, bold = fonts()
+    layout = compose_page(act, book.data, index=2, count=3, answer_key=True,
+                          regular=regular, bold=bold, text_width=_measure,
+                          editorial=editorial_spec(EDITORIAL_HALLOWEEN_V1))
+    board = layout.board
+    x0, y0 = board.x + 67, board.y + 42
+    x_span, y_span = board.width - 134, board.height - 110
+    points = [(x0 + point["x"] * x_span, y0 + point["y"] * y_span)
+              for point in act.geometry["points"]]
+    segments = tuple(zip(points, points[1:] + points[:1]))
+    labels = _labels_for_points(points, board, bold, avoid_segments=segments)
+    for (tx, ty), point in zip(labels, act.geometry["points"], strict=True):
+        width = _measure(str(point["n"]), bold, 11) + 6
+        box = Rect(tx - width / 2, ty - 1, width, 13)
+        assert not any(_segment_intersects_rect(start, end, box)
+                       for start, end in segments), point["n"]

@@ -259,7 +259,33 @@ def _match(c: canvas.Canvas, act: Activity, board: Rect, solution: bool) -> None
         c.restoreState()
 
 
-def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str) -> list[tuple[float, float]]:
+def _segment_intersects_rect(a: tuple[float, float], b: tuple[float, float], box: Rect) -> bool:
+    """Inclusive segment-vs-rectangle test for answer-line-safe point labels."""
+    x0, y0 = a
+    x1, y1 = b
+    dx, dy = x1 - x0, y1 - y0
+    enter, leave = 0.0, 1.0
+    for p, q in ((-dx, x0 - box.x), (dx, box.right - x0),
+                 (-dy, y0 - box.y), (dy, box.top - y0)):
+        if abs(p) < 1e-12:
+            if q < 0:
+                return False
+            continue
+        t = q / p
+        if p < 0:
+            if t > leave:
+                return False
+            enter = max(enter, t)
+        else:
+            if t < enter:
+                return False
+            leave = min(leave, t)
+    return True
+
+
+def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str,
+                       *, avoid_segments: tuple[tuple[tuple[float, float],
+                                                      tuple[float, float]], ...] = ()) -> list[tuple[float, float]]:
     """Place every number within the panel, away from other dots and labels."""
     chosen: list[Rect] = []
     output: list[tuple[float, float]] = []
@@ -277,6 +303,8 @@ def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str
                 continue
             if any((cx - px) ** 2 + (cy - py) ** 2 < 13 ** 2 for px, py in points):
                 continue
+            if any(_segment_intersects_rect(start, end, box) for start, end in avoid_segments):
+                continue
             chosen.append(box)
             output.append((cx, cy - 4))
             break
@@ -285,14 +313,19 @@ def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str
     return output
 
 
-def _dots(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str) -> None:
+def _dots(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str,
+          editorial: EditorialSpec | None = None) -> None:
     points = act.geometry["points"]
     if len(points) > 30:
         raise ValueError("Trop de points pour la fiche V0.2-B")
     x0, y0 = board.x + 67, board.y + 42
     x_span, y_span = board.width - 134, board.height - 110
     coords = [(x0 + p["x"] * x_span, y0 + p["y"] * y_span) for p in points]
-    positions = _labels_for_points(coords, board, bold)
+    # C4 only: choose label positions that also remain clear of the answer path.
+    # Historical outputs keep the original label policy byte-for-byte.
+    avoid_segments = (tuple(zip(coords, coords[1:] + coords[:1]))
+                      if editorial is not None else ())
+    positions = _labels_for_points(coords, board, bold, avoid_segments=avoid_segments)
     if solution:
         c.saveState()
         c.setStrokeGray(.50)
@@ -480,7 +513,7 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
             elif act.type == "match":
                 _match(c, act, layout.board, answer_key)
             elif act.type == "connect_dots":
-                _dots(c, act, layout.board, answer_key, bold)
+                _dots(c, act, layout.board, answer_key, bold, editorial)
             else:
                 raise ValueError(f"Type de rendu absent : {act.type}")
             c.showPage()
