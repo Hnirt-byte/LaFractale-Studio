@@ -867,13 +867,13 @@ def _make_report_dir(report_dir: Path) -> None:
             return
         if not stat.S_ISDIR(mode):
             raise PreflightError("--report-dir n'est pas un répertoire réel")
-        with os.scandir(fd) as scan:
-            entries = sorted(e.name for e in scan)
         sub = os.open(leaf, flags, dir_fd=fd)
         try:
             with os.scandir(sub) as scan:
                 inner = sorted(e.name for e in scan)
-            if inner or any(name.startswith(".") for name in entries):
+            if inner:
+                # scandir liste aussi les entrées cachées : un répertoire non vide
+                # (fichier, sous-dossier ou entrée masquée) est refusé.
                 raise PreflightError("--report-dir doit être vide (collision/entrée cachée refusée)")
         finally:
             os.close(sub)

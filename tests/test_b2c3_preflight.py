@@ -297,6 +297,16 @@ def test_symlink_report_dir_is_refused(c2_out, tmp_path):
     assert result.returncode == 2
 
 
+def test_report_dir_under_parent_with_hidden_entry_is_accepted(c2_out, tmp_path):
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    (parent / ".hidden").write_text("x")
+    report = parent / "r"
+    result = _run(c2_out, report)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (report / "b2c3_preflight.json").exists()
+
+
 def test_unknown_policy_is_refused(c2_out, tmp_path):
     result = _run(c2_out, tmp_path / "r", policy="halloween-pip-placement-v3")
     assert result.returncode == 2
