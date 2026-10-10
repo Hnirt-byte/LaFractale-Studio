@@ -18,7 +18,7 @@ def _intersect(a, b, c, d):
     return (ab_c * ab_d < -eps and cd_a * cd_b < -eps)
 
 
-def validate_activity(activity: Activity) -> list[str]:
+def validate_activity(activity: Activity, *, moon_len: int = 12) -> list[str]:
     errors: list[str] = []
     geom, answer = activity.geometry, activity.answer
     if activity.type == "maze":
@@ -67,8 +67,8 @@ def validate_activity(activity: Activity) -> list[str]:
         shape = geom.get("shape")
         if shape not in {"moon", "house", "star"}:
             return [f"{activity.id}: forme inconnue"]
-        if shape == "moon" and len(pts) != 12:
-            errors.append(f"{activity.id}: lune incomplète (12 points requis)")
+        if shape == "moon" and len(pts) != moon_len:
+            errors.append(f"{activity.id}: lune incomplète ({moon_len} points requis)")
         if len(pts) < 7 or [p.get("n") for p in pts] != list(range(1, len(pts) + 1)):
             errors.append(f"{activity.id}: numérotation non bijective 1..N")
         if not geom.get("closed") or answer.get("close_to") != 1 or answer.get("order") != list(range(1, len(pts) + 1)):
@@ -101,7 +101,7 @@ def validate_activity(activity: Activity) -> list[str]:
     return errors
 
 
-def validate_collection(activities: Iterable[Activity]) -> list[str]:
+def validate_collection(activities: Iterable[Activity], *, moon_len: int = 12) -> list[str]:
     items = list(activities)
     errors = []
     for attribute in ("id", "page", "seed"):
@@ -117,5 +117,5 @@ def validate_collection(activities: Iterable[Activity]) -> list[str]:
         if a.scene == b.scene:
             errors.append(f"Scène répétée consécutivement : {a.id}/{b.id}")
     for item in items:
-        errors.extend(validate_activity(item))
+        errors.extend(validate_activity(item, moon_len=moon_len))
     return errors

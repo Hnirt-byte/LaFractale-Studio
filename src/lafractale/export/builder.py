@@ -28,6 +28,7 @@ from lafractale.security.strict_json import loads_strict
 from lafractale.quality.checks import validate_collection
 from lafractale.layout.pdf import write_pdf, fonts, _measure
 from lafractale.layout.composition import compose_page
+from lafractale.editorial import editorial_spec, transform_editorial
 from lafractale.illustrations.registry import (IllustrationError, load_approved_artwork,
                                                verify_approved_artwork)
 from lafractale.illustrations.routing import (IllustrationRoute, build_illustration_route,
@@ -68,6 +69,7 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
                             illustration_id: str | None = None,
                             illustration_routing: str | None = None,
                             pip_placement: str | None = None,
+                            editorial_profile: str | None = None,
                             trusted_approvals_sha256: str | None = None) -> dict:
     verify_companion_text(book.root, book.companion, book.data, book.plan)
     verify_book_snapshot(book)
@@ -77,6 +79,9 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
     placement_mode = resolve_pip_placement_mode(pip_placement)
     if placement_mode != "none" and mode != "routed":
         raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
+    editorial = editorial_spec(editorial_profile)
+    if editorial is not None and (mode != "routed" or placement_mode == "none"):
+        raise IllustrationError("Profil éditorial exige la route C1 et le placement C2 V2")
     artwork = None
     route = None
     placement: PipPlacementPlan | None = None
@@ -103,7 +108,12 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
     activities=[generate(spec,stable_seed(book.book_id,spec.id,seed)) for spec in specs]
     errors=validate_collection(activities)
     if errors:
-        raise ConfigError("Exercices invalides :\n" + "\n".join(errors))
+        raise ConfigError("Exercices invalides :\n"+"\n".join(errors))
+    if editorial is not None:
+        activities=[transform_editorial(a, book, editorial.profile_id) for a in activities]
+        errors=validate_collection(activities, moon_len=8)
+        if errors:
+            raise ConfigError("Exercices éditoriaux C4 invalides :\n"+"\n".join(errors))
     assets=registry(book)
     companion=book.companion
     prohibited = tuple(name for name in companion.reserved_names
@@ -118,7 +128,8 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
                "trusted_approvals_sha256": trusted_approvals_sha256} if artwork else
               {"illustration_route": route, "approved_book": book,
                "trusted_approvals_sha256": trusted_approvals_sha256,
-               **({"pip_placement": placement.policy_id} if placement is not None else {})}
+               **(dict(pip_placement=placement.policy_id) if placement is not None else {}),
+               **(dict(editorial_profile=editorial_profile) if editorial is not None else {})}
               if route else {})
     write_pdf(interior,activities,book.data,answer_key=False, **kwargs)
     write_pdf(answers,activities,book.data,answer_key=True, **kwargs)
@@ -184,6 +195,9 @@ def _build_demo_unpublished(book: Book, out: Path, *, seed: int = 2026,
     if placement is not None:
         # Opt-in C2 only: a dedicated key, never an implicit activation.
         manifest["pip_placement"] = placement.manifest_entry()
+    if editorial is not None:
+        # Opt-in C4 only: a dedicated key, never an implicit activation.
+        manifest["editorial_profile"] = editorial.profile_id
     # Re-read the approved source at the last publication-adjacent step: a
     # post-load or mid-build mutation must never yield a trusted manifest.
     verify_companion_text(book.root, book.companion, book.data, book.plan)
@@ -219,6 +233,7 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026,
                illustration_id: str | None = None,
                illustration_routing: str | None = None,
                pip_placement: str | None = None,
+               editorial_profile: str | None = None,
                trusted_approvals_sha256: str | None = None) -> dict:
     """Build in a private directory and publish using anchored directory FDs.
 
@@ -245,10 +260,12 @@ def build_demo(book: Book, out: Path, *, seed: int = 2026,
             report = _build_demo_unpublished(book, stage, seed=seed,
                 illustration_id=illustration_id, illustration_routing=illustration_routing,
                 pip_placement=pip_placement,
+                editorial_profile=editorial_profile,
                 trusted_approvals_sha256=trusted_approvals_sha256)
             errors = audit_output(stage, book=book, illustration_id=illustration_id,
                                   illustration_routing=illustration_routing,
                                   pip_placement=pip_placement,
+                                  editorial_profile=editorial_profile,
                                   trusted_approvals_sha256=trusted_approvals_sha256)
             if errors:
                 raise ConfigError("QA de génération incomplète : " + "; ".join(errors))
@@ -386,6 +403,7 @@ def audit_output(out: Path, *, book: Book | None = None,
                  illustration_id: str | None = None,
                  illustration_routing: str | None = None,
                  pip_placement: str | None = None,
+                 editorial_profile: str | None = None,
                  trusted_approvals_sha256: str | None = None) -> list[str]:
     """Audit only through a symlink-free, FD-anchored directory root."""
     if book is None:
@@ -395,6 +413,9 @@ def audit_output(out: Path, *, book: Book | None = None,
         placement_mode = resolve_pip_placement_mode(pip_placement)
         if placement_mode != "none" and mode != "routed":
             raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
+        editorial = editorial_spec(editorial_profile)
+        if editorial is not None and (mode != "routed" or placement_mode == "none"):
+            raise IllustrationError("Profil éditorial exige la route C1 et le placement C2 V2")
     except IllustrationError as exc:
         return [f"Audit impossible : contexte d'illustration non autorisé : {exc}"]
     try:
@@ -402,6 +423,7 @@ def audit_output(out: Path, *, book: Book | None = None,
             return _audit_output_verified(anchored_root, book=book,
                 illustration_id=illustration_id, illustration_routing=illustration_routing,
                 pip_placement=pip_placement,
+                editorial_profile=editorial_profile,
                 trusted_approvals_sha256=trusted_approvals_sha256)
     except (UnsafeOutputPath, OSError, IllustrationError) as exc:
         return [f"Répertoire d'audit ou approbation non autorisé : {exc}"]
@@ -411,6 +433,7 @@ def _audit_output_verified(out: Path, *, book: Book,
                            illustration_id: str | None = None,
                            illustration_routing: str | None = None,
                            pip_placement: str | None = None,
+                           editorial_profile: str | None = None,
                            trusted_approvals_sha256: str | None = None) -> list[str]:
     """Source policy comes from Book; the output FD cannot be a user symlink.
 
@@ -431,6 +454,9 @@ def _audit_output_verified(out: Path, *, book: Book,
         placement_mode = resolve_pip_placement_mode(pip_placement)
         if placement_mode != "none" and mode != "routed":
             raise IllustrationError("Placement Pip autorisé uniquement avec la route C1 Halloween")
+        editorial = editorial_spec(editorial_profile)
+        if editorial is not None and (mode != "routed" or placement_mode == "none"):
+            raise IllustrationError("Profil éditorial exige la route C1 et le placement C2 V2")
         expected_artwork = None
         expected_route = None
         expected_placement: PipPlacementPlan | None = None
@@ -527,6 +553,11 @@ def _audit_output_verified(out: Path, *, book: Book,
         elif ("illustration" in manifest or "illustration_routing" in manifest
                 or "pip_placement" in manifest):
             raise UnsafeEditorialText("Illustration inattendue dans le manifeste placeholder")
+        if editorial is not None:
+            if manifest.get("editorial_profile") != editorial.profile_id:
+                raise UnsafeEditorialText("Profil éditorial du manifeste non conforme")
+        elif "editorial_profile" in manifest:
+            raise UnsafeEditorialText("Profil éditorial inattendu sans opt-in explicite")
         if (manifest.get("book_id") != book.book_id
                 or manifest.get("target_pages") != book.pages
                 or manifest.get("companion") != expected_companion
@@ -567,6 +598,9 @@ def _audit_output_verified(out: Path, *, book: Book,
             return ["Manifest demo_pages incompatible avec la route C1"]
         expected_activities = [generate(spec, stable_seed(book.book_id, spec.id, audit_seed))
                                for spec in demo_specs(book)]
+        if editorial is not None:
+            expected_activities = [transform_editorial(a, book, editorial.profile_id)
+                                   for a in expected_activities]
         regular, bold = fonts()
 
         def _trusted_layouts(answer_key: bool):
@@ -575,7 +609,8 @@ def _audit_output_verified(out: Path, *, book: Book,
             for index, activity in enumerate(expected_activities, 1):
                 layout = compose_page(activity, book.data, index=index,
                                       count=len(expected_activities), answer_key=answer_key,
-                                      regular=regular, bold=bold, text_width=_measure)
+                                      regular=regular, bold=bold, text_width=_measure,
+                                      editorial=editorial)
                 if expected_placement is not None:
                     layout = placed_composition(
                         layout, expected_placement.anchor_for(activity, demo_index=index),
@@ -707,6 +742,7 @@ def _audit_output_verified(out: Path, *, book: Book,
                     book, canonical, seed=replay_seed, illustration_id=illustration_id,
                     illustration_routing=illustration_routing,
                     pip_placement=pip_placement,
+                    editorial_profile=editorial_profile,
                     trusted_approvals_sha256=trusted_approvals_sha256,
                 )
                 expected_manifest = loads_strict((canonical / "manifest.json").read_bytes())

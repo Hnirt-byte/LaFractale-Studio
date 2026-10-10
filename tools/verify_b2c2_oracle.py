@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Prove the B2-C2 V2 placed mode is byte-identical to an isolated Git reference.
 
-Third non-regression oracle required by the B2-C3 contract: the placed Halloween
-mode (`--pip-placement halloween-pip-placement-v2`) must keep producing exactly
-the merged B2-C2 output when the new read-only preflight is added.  The B2-C3
-diagnostic tool must not change the C2 V2 build, QA or closed inventory.
+Third non-regression oracle: the placed Halloween mode
+(`--pip-placement halloween-pip-placement-v2`) must keep producing exactly the
+merged B2-C2 output even as the engine evolves (B2-C3 read-only preflight,
+B2-C4 opt-in editorial profile).  The guarantee is byte-identity of the
+historical placed-V2 output, rebuilt independently from the reference tree.
+Python source identity is recorded for traceability but no longer enforced:
+the engine may change behind the opt-in editorial profile.
 
 The candidate is captured as an immutable Git tree built through a private
 index; the reference is a detached worktree of the B2-C2 merge commit.  Both
@@ -193,11 +196,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         candidate_python_files = _python_source_blobs(candidate, snapshot.tree)
         reference_python_files = _python_source_blobs(candidate, args.reference_commit)
-        if candidate_python_files != reference_python_files:
-            raise RuntimeError(
-                "B2-C3 ne doit pas modifier le moteur src/lafractale : "
-                "le code Python du candidat diffère de la référence B2-C2"
-            )
+        # B2-C4: the engine may evolve behind the opt-in editorial profile, so
+        # Python source identity is recorded for traceability only, not enforced.
+        # The real non-regression guarantee is the byte-identity of the
+        # historical placed-V2 output below, rebuilt from the reference tree.
         with tempfile.TemporaryDirectory(prefix="lafractale-b2c2-run-") as temporary:
             with _reference_worktree(candidate, args.reference_commit) as reference:
                 candidate_env = base_env.copy()
