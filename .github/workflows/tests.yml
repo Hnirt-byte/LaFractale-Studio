@@ -58,7 +58,7 @@ jobs:
           python -m lafractale build-demo books/halloween_2026/book.yaml
           --out dist/ci-halloween-placed
           --illustration-routing halloween-pip-demo-v1
-          --pip-placement halloween-pip-placement-v1
+          --pip-placement halloween-pip-placement-v2
           --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
@@ -66,7 +66,7 @@ jobs:
           python -m lafractale qa dist/ci-halloween-placed
           --book books/halloween_2026/book.yaml
           --illustration-routing halloween-pip-demo-v1
-          --pip-placement halloween-pip-placement-v1
+          --pip-placement halloween-pip-placement-v2
           --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
@@ -75,9 +75,21 @@ jobs:
           if python -m lafractale qa dist/ci-halloween-routed \
             --book books/halloween_2026/book.yaml \
             --illustration-routing halloween-pip-demo-v1 \
-            --pip-placement halloween-pip-placement-v1 \
+            --pip-placement halloween-pip-placement-v2 \
             --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"; then
             echo "ERREUR : QA a accepté un placement C2 absent du manifeste" >&2
+            exit 1
+          fi
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # V2 replaced V1: the legacy policy identifier must be refused outright.
+      - run: |
+          if python -m lafractale build-demo books/halloween_2026/book.yaml \
+            --out dist/ci-halloween-v1-refused \
+            --illustration-routing halloween-pip-demo-v1 \
+            --pip-placement halloween-pip-placement-v1 \
+            --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"; then
+            echo "ERREUR : la politique de placement V1 a été acceptée" >&2
             exit 1
           fi
         env:

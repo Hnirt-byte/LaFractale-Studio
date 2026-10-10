@@ -1,4 +1,4 @@
-"""Closed, source-backed B2-C2 Pip placement: opt-in, bound to the C1 route.
+"""Closed, source-backed B2-C2 Pip placement V2 (`intro_right`): opt-in, bound to the C1 route.
 
 The placement is a static table frozen in audited code and tied to the canonical
 Halloween C1 illustration route.  It is never read from YAML, JSON, a manifest, a
@@ -8,10 +8,14 @@ canonical plan is recomputed from the verified Book, ``demo_specs``, the C1 rout
 and the external approval pin.
 
 Placement is a pure function of the trusted C1 composition ``L0``
-(``composition.compose_page``): ``scene_right`` reuses the C1 slot unchanged,
-while ``lower_left``/``lower_right`` derive a slot in the free band between the
-board and the footer.  The historical ``artwork=`` path and the C1 routed path
-without this option are untouched.
+(``composition.compose_page``): the three canonical demo pages place Pip in the
+upper-right introduction row (``intro_right``, 48 pt side) derived from the header
+badge axis.  The historical ``artwork=`` path and the C1 routed path without this
+option are untouched.
+
+V2 contract: ``docs/SECURITY_CONTRACT_B2C2_ADDENDUM_B_v1.1.md``.  Any other
+placement (V1 ``halloween-pip-placement-v1``, caller-supplied rectangle or
+coordinate, or anchor) is refused.
 """
 from __future__ import annotations
 
@@ -37,25 +41,33 @@ from lafractale.layout.composition import (
 from lafractale.story.plan import demo_specs
 
 
+PIP_PLACEMENT_HALLOWEEN_V2 = "halloween-pip-placement-v2"
+# The V1 policy is kept only as a refused identifier: it must never resolve.
 PIP_PLACEMENT_HALLOWEEN_V1 = "halloween-pip-placement-v1"
 
-SCENE_RIGHT = "scene_right"
-LOWER_LEFT = "lower_left"
-LOWER_RIGHT = "lower_right"
-_ANCHORS = frozenset({SCENE_RIGHT, LOWER_LEFT, LOWER_RIGHT})
+# V2 geometry: a single authorised anchor.
+INTRO_RIGHT = "intro_right"
+_ANCHORS = frozenset({INTRO_RIGHT})
 
 # Minimum separation demanded by the contract, in PDF points.
 MIN_CLEARANCE_PT = 4.0
-# The free band must exceed the slot height by this margin before a slot fits.
-MIN_BAND_SLACK_PT = 8.0
+# Visible Pip image side, in PDF points (48 pt = 16.93 mm).
+PIP_SIDE_PT = 48.0
+# Visible image right edge = L0.header.right - 16 pt (header badge axis).
+INSET_RIGHT_PT = 16.0
+# Visible image top edge = L0.header.y - 4 pt (minimum clearance to the header).
+INSET_TOP_PT = 4.0
+# C1 technical insets, inverted to rebuild the slot around the 48 pt image.
+H_INSET_PT = 4.0
+V_INSET_PT = 3.0
 
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 # (demo_index, activity_id, source_page, activity_type, anchor)
-_CANONICAL_HALLOWEEN_PIP_PLACEMENT_V1 = (
-    (1, "halloween_2026-p004", 4, "maze", SCENE_RIGHT),
-    (2, "halloween_2026-p006", 6, "connect_dots", LOWER_RIGHT),
-    (3, "halloween_2026-p020", 20, "match", LOWER_LEFT),
+_CANONICAL_HALLOWEEN_PIP_PLACEMENT_V2 = (
+    (1, "halloween_2026-p004", 4, "maze", INTRO_RIGHT),
+    (2, "halloween_2026-p006", 6, "connect_dots", INTRO_RIGHT),
+    (3, "halloween_2026-p020", 20, "match", INTRO_RIGHT),
 )
 
 
@@ -108,58 +120,54 @@ def resolve_pip_placement_mode(pip_placement: str | None) -> str:
     """Resolve the explicit opt-in before any staging directory exists."""
     if pip_placement is None:
         return "none"
+    if pip_placement == PIP_PLACEMENT_HALLOWEEN_V2:
+        return PIP_PLACEMENT_HALLOWEEN_V2
     if pip_placement == PIP_PLACEMENT_HALLOWEEN_V1:
-        return PIP_PLACEMENT_HALLOWEEN_V1
+        raise IllustrationError("Politique de placement Pip V1 remplacée et refusée")
     raise IllustrationError("Politique de placement Pip inconnue ou non autorisée")
 
 
-def placed_slot(layout: PageComposition, anchor: str) -> Rect:
-    """Derive the C2 slot from a trusted C1 composition; never from caller data."""
+def placed_image_box(layout: PageComposition, anchor: str) -> Rect:
+    """Derive the visible V2 image box from the trusted C1 composition."""
     if anchor not in _ANCHORS:
         raise IllustrationError("Ancrage de placement Pip inconnu")
-    if anchor == SCENE_RIGHT:
-        return layout.companion_slot
-    gap_bottom = layout.footer.top
-    gap_top = layout.board.y
-    gap_height = gap_top - gap_bottom
-    slot_width = layout.companion_slot.width
-    slot_height = layout.companion_slot.height
-    values = (gap_bottom, gap_top, gap_height, slot_width, slot_height)
+    values = (layout.header.right, layout.header.y, PIP_SIDE_PT, INSET_RIGHT_PT, INSET_TOP_PT)
     if (any(not isinstance(value, (int, float)) or isinstance(value, bool) or not isfinite(value)
             for value in values)
-            or slot_width <= 0 or slot_height <= 0):
-        raise IllustrationError("Bande de placement Pip non finie ou vide")
-    if gap_height < slot_height + MIN_BAND_SLACK_PT:
-        raise IllustrationError("Bande inférieure insuffisante pour le placement Pip")
-    y = gap_bottom + (gap_height - slot_height) / 2
-    if anchor == LOWER_LEFT:
-        x = layout.board.x + MIN_CLEARANCE_PT
-    else:
-        x = layout.board.right - slot_width - MIN_CLEARANCE_PT
-    return Rect(x, y, slot_width, slot_height)
+            or PIP_SIDE_PT <= 0 or INSET_RIGHT_PT < 0 or INSET_TOP_PT < 0):
+        raise IllustrationError("Régions de placement Pip non finies ou invalides")
+    return Rect(layout.header.right - INSET_RIGHT_PT - PIP_SIDE_PT,
+                layout.header.y - INSET_TOP_PT - PIP_SIDE_PT,
+                PIP_SIDE_PT, PIP_SIDE_PT)
+
+
+def placed_slot(layout: PageComposition, anchor: str) -> Rect:
+    """Derive the technical V2 slot from a trusted C1 composition; never from caller data."""
+    image = placed_image_box(layout, anchor)
+    return Rect(image.x - H_INSET_PT, image.y - V_INSET_PT,
+                image.width + 2 * H_INSET_PT, image.height + 2 * V_INSET_PT)
 
 
 def placed_composition(layout: PageComposition, anchor: str, *, text_width: TextWidth) -> PageComposition:
     """Return an immutable copy of ``layout`` whose only change is the slot.
 
-    Refuses any slot outside the safe margin, any clearance below the contract
-    minimum and any overlap with another named region, then re-runs the full
-    composition validation.  ``layout`` itself is never mutated.
+    Refuses any slot outside the safe margin, any visible-image clearance below the
+    contract minimum (header above, prompt region below) and any overlap between the
+    slot and another named region, then re-runs the full composition validation.
+    ``layout`` itself is never mutated.  ``intro_right`` places Pip in the free row
+    between the prompt block and the header; the visible image is anchored to the
+    header badge axis and the technical slot, larger by the C1 insets, is the only
+    rectangle handed to the renderer.
     """
     slot = placed_slot(layout, anchor)
+    image = placed_image_box(layout, anchor)
     placed = replace(layout, companion_slot=slot)
     if not placed.safe.contains(slot):
         raise IllustrationError("Slot Pip de placement hors marge de sécurité")
-    if anchor != SCENE_RIGHT:
-        if slot.y - layout.footer.top < MIN_CLEARANCE_PT - 1e-9:
-            raise IllustrationError("Séparation Pip/pied de page insuffisante")
-        if layout.board.y - slot.top < MIN_CLEARANCE_PT - 1e-9:
-            raise IllustrationError("Séparation Pip/plateau insuffisante")
-        if anchor == LOWER_LEFT:
-            if slot.x - layout.board.x < MIN_CLEARANCE_PT - 1e-9:
-                raise IllustrationError("Retrait latéral gauche du placement Pip insuffisant")
-        elif layout.board.right - slot.right < MIN_CLEARANCE_PT - 1e-9:
-            raise IllustrationError("Retrait latéral droit du placement Pip insuffisant")
+    if layout.header.y - image.top < MIN_CLEARANCE_PT - 1e-9:
+        raise IllustrationError("Séparation Pip/en-tête insuffisante")
+    if image.y - layout.prompt_fr.region.top < MIN_CLEARANCE_PT - 1e-9:
+        raise IllustrationError("Séparation Pip/consigne insuffisante")
     for name, region in placed.regions().items():
         if name == "companion_slot":
             continue
@@ -178,7 +186,9 @@ def _verified_specs(book: Book):
 def build_pip_placement_plan(book: Book, route: IllustrationRoute, *, policy_id: str,
                              trusted_approvals_sha256: str) -> PipPlacementPlan:
     """Construct the sole permitted placement plan from trusted sources."""
-    if policy_id != PIP_PLACEMENT_HALLOWEEN_V1:
+    if policy_id != PIP_PLACEMENT_HALLOWEEN_V2:
+        if policy_id == PIP_PLACEMENT_HALLOWEEN_V1:
+            raise IllustrationError("Politique de placement Pip V1 remplacée et refusée")
         raise IllustrationError("Politique de placement Pip inconnue")
     if type(route) is not IllustrationRoute:
         raise IllustrationError("Objet de routage non canonique")
@@ -189,11 +199,11 @@ def build_pip_placement_plan(book: Book, route: IllustrationRoute, *, policy_id:
     verify_illustration_route(book, route, policy_id=route.policy_id,
                               trusted_approvals_sha256=trusted_approvals_sha256)
     specs = _verified_specs(book)
-    if len(specs) != len(_CANONICAL_HALLOWEEN_PIP_PLACEMENT_V1) or len(route.bindings) != len(specs):
+    if len(specs) != len(_CANONICAL_HALLOWEEN_PIP_PLACEMENT_V2) or len(route.bindings) != len(specs):
         raise IllustrationError("Couverture de placement routée incomplète ou supplémentaire")
     bindings: list[PipPlacementBinding] = []
     for spec, route_binding, expected in zip(
-            specs, route.bindings, _CANONICAL_HALLOWEEN_PIP_PLACEMENT_V1, strict=True):
+            specs, route.bindings, _CANONICAL_HALLOWEEN_PIP_PLACEMENT_V2, strict=True):
         demo_index, activity_id, source_page, activity_type, anchor = expected
         if (spec.id, spec.page, spec.type) != (activity_id, source_page, activity_type):
             raise IllustrationError("Identité d'activité incompatible avec la politique C2")
@@ -204,8 +214,6 @@ def build_pip_placement_plan(book: Book, route: IllustrationRoute, *, policy_id:
                                             activity_type, anchor))
     if len({binding.demo_index for binding in bindings}) != len(bindings):
         raise IllustrationError("Politique de placement duplique un index de démonstration")
-    if len({binding.anchor for binding in bindings}) != len(bindings):
-        raise IllustrationError("Politique de placement duplique un ancrage")
     return PipPlacementPlan(policy_id, tuple(bindings))
 
 
