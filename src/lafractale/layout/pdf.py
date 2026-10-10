@@ -20,14 +20,16 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
 
 from lafractale.activities.models import Activity
+from lafractale.activities.engine import generate
 from lafractale import __version__
+from lafractale.config.schema import Book, verify_book_snapshot
 from lafractale.layout.composition import Rect, TextBlock, compose_page
 from lafractale.export.securefs import new_regular_file
 from lafractale.quality.checks import validate_collection
 from lafractale.security.text import verify_text_policy
 from lafractale.illustrations.registry import VerifiedArtwork, verify_approved_artwork, IllustrationError
 from lafractale.illustrations.routing import IllustrationRoute, verify_illustration_route
-from lafractale.config.schema import Book
+from lafractale.story.plan import demo_specs
 
 
 def fonts() -> tuple[str, str]:
@@ -323,6 +325,40 @@ def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
                  for act in copies)
 
 
+def _routed_render_snapshot(activities: list[Activity], *, approved_book: Book,
+                            illustration_route: IllustrationRoute,
+                            trusted_approvals_sha256: str) -> tuple[Activity, ...]:
+    """Bind a routed render to the complete canonical C1 activity sequence.
+
+    A valid route authorizes only its three independently regenerated Halloween
+    activities in canonical PDF order; it never authorizes an arbitrary prefix
+    or caller-supplied activity list.
+    """
+    if type(illustration_route) is not IllustrationRoute:
+        raise IllustrationError("Objet de routage non canonique")
+    verify_book_snapshot(approved_book)
+    specs = tuple(demo_specs(approved_book))
+    detached = tuple(copy.deepcopy(activities))
+    rendering = _render_snapshot(list(detached))
+    if len(specs) != 3 or len(rendering) != len(specs):
+        raise IllustrationError("Séquence d'activités routée C1 incomplète ou supplémentaire")
+    if len(illustration_route.bindings) != len(specs):
+        raise IllustrationError("Couverture de route C1 incomplète ou supplémentaire")
+    for index, (activity, spec, binding) in enumerate(
+            zip(detached, specs, illustration_route.bindings, strict=True), start=1):
+        expected_activity = generate(spec, activity.seed)
+        if activity != expected_activity:
+            raise IllustrationError("Activité routée non conforme aux spécifications canoniques")
+        if (binding.demo_index, binding.activity_id, binding.source_page, binding.activity_type) != (
+                index, spec.id, spec.page, spec.type):
+            raise IllustrationError("Liaison de route C1 non conforme aux spécifications canoniques")
+        illustration_route.artwork_for(activity, demo_index=index)
+    verify_illustration_route(approved_book, illustration_route,
+                              policy_id=illustration_route.policy_id,
+                              trusted_approvals_sha256=trusted_approvals_sha256)
+    return rendering
+
+
 def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key: bool,
               artwork: VerifiedArtwork | None = None,
               illustration_route: IllustrationRoute | None = None,
@@ -335,6 +371,7 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
     """
     if artwork is not None and illustration_route is not None:
         raise IllustrationError("Visuel historique et route C1 mutuellement exclusifs")
+    rendering: tuple[Activity, ...]
     if artwork is not None:
         if approved_book is None or trusted_approvals_sha256 is None:
             raise IllustrationError("Source d'approbation indépendante obligatoire pour un visuel PDF")
@@ -342,6 +379,7 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
                                 trusted_approvals_sha256=trusted_approvals_sha256)
         if approved_book.data != book:
             raise IllustrationError("Configuration PDF non conforme au livre approuvé")
+        rendering = _render_snapshot(activities)
     elif illustration_route is not None:
         if approved_book is None or trusted_approvals_sha256 is None:
             raise IllustrationError("Source d'approbation indépendante obligatoire pour une route PDF")
@@ -350,9 +388,14 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
                                   trusted_approvals_sha256=trusted_approvals_sha256)
         if approved_book.data != book:
             raise IllustrationError("Configuration PDF non conforme au livre approuvé")
+        rendering = _routed_render_snapshot(
+            activities, approved_book=approved_book, illustration_route=illustration_route,
+            trusted_approvals_sha256=trusted_approvals_sha256,
+        )
     elif approved_book is not None or trusted_approvals_sha256 is not None:
         raise IllustrationError("Paramètres graphiques partiels interdits")
-    rendering = _render_snapshot(activities)
+    else:
+        rendering = _render_snapshot(activities)
     book_snapshot = _freeze(copy.deepcopy(book))
     verify_text_policy(book_snapshot, location="configuration PDF")
     regular, bold = fonts()
