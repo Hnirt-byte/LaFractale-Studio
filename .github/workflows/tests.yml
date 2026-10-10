@@ -36,6 +36,16 @@ jobs:
           --proof dist/b2c1-oracle-proof.json
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # Third non-regression oracle: B2-C3 must not change the C2 V2 placed bytes.
+      - run: >-
+          python tools/verify_b2c2_oracle.py
+          --candidate-repo .
+          --reference-commit e9b8036b902a5bdc4865291a1f21dbb277c5b175
+          --require-head-tree
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+          --proof dist/b2c2-oracle-proof.json
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
       - run: python -m lafractale validate books/halloween_2026/book.yaml
       - run: python -m lafractale validate books/christmas_2026/book.yaml
       - run: python -m lafractale build-demo books/halloween_2026/book.yaml --out dist/ci-halloween
@@ -70,6 +80,16 @@ jobs:
           --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # B2-C3 read-only pre-press preflight over the placed C2 V2 output.
+      - run: >-
+          python tools/preflight_b2c3.py
+          --out dist/ci-halloween-placed
+          --book books/halloween_2026/book.yaml
+          --policy halloween-pip-placement-v2
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+          --report-dir dist/b2c3-report
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
       # C2 stays strictly opt-in: claiming C2 on a C1 output must be refused.
       - run: |
           if python -m lafractale qa dist/ci-halloween-routed \
@@ -100,6 +120,8 @@ jobs:
           path: |
             dist/b2b-oracle-proof.json
             dist/b2c1-oracle-proof.json
+            dist/b2c2-oracle-proof.json
+            dist/b2c3-report/
             dist/ci-halloween-routed/previews/
             dist/ci-halloween-placed/previews/
       - run: python -m lafractale build-demo books/christmas_2026/book.yaml --out dist/ci-christmas
