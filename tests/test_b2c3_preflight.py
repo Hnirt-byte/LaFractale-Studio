@@ -66,12 +66,16 @@ def c2_out(tmp_path_factory):
     return out
 
 
-def _run(c2_out, report_dir, policy="halloween-pip-placement-v2", pin=PIN):
-    return subprocess.run(
-        [sys.executable, str(PREFLIGHT), "--out", str(c2_out), "--book", str(BOOK),
-         "--policy", policy, "--approvals-sha256", pin, "--report-dir", str(report_dir)],
-        cwd=ROOT, capture_output=True, text=True,
-    )
+def _run(c2_out, report_dir, policy="halloween-pip-placement-v2", pin=PIN,
+         editorial_profile=None):
+    command = [
+        sys.executable, str(PREFLIGHT), "--out", str(c2_out), "--book", str(BOOK),
+        "--policy", policy, "--approvals-sha256", pin,
+    ]
+    if editorial_profile is not None:
+        command.extend(["--editorial-profile", editorial_profile])
+    command.extend(["--report-dir", str(report_dir)])
+    return subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
 
 
 def _crafted_page(preflight, layout, *, size=None, fontname=None, color=None, text="txt",
@@ -368,3 +372,41 @@ def test_tool_pass_separated_from_page_warn_no_kdp_ready(c2_out, tmp_path):
     assert payload["kdp"]["status"] == "FORBIDDEN"
     # the PIN value must never leak into the proofs
     assert PIN not in json.dumps(payload)
+
+
+# --------------------------------------------------------------------------
+# 15. C4 explicit preflight: static editorial recomputation + Pip bbox C2 V2
+# --------------------------------------------------------------------------
+def test_c4_profile_preflight_recomputes_variant_and_checks_pip_bbox(tmp_path, monkeypatch):
+    from lafractale.export.builder import build_demo
+    from lafractale.editorial import EDITORIAL_HALLOWEEN_V1
+    from lafractale.config.schema import load_book
+
+    # The trust replay compares PDF bytes. Pin the documented reproducibility
+    # epoch for this subprocess-facing C4 integration test rather than relying
+    # on the ambient CI environment.
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1780000000")
+    out = tmp_path / "c4-out"
+    build_demo(
+        load_book(BOOK), out, illustration_routing="halloween-pip-demo-v1",
+        pip_placement="halloween-pip-placement-v2", editorial_profile=EDITORIAL_HALLOWEEN_V1,
+        trusted_approvals_sha256=PIN,
+    )
+    report = tmp_path / "c4-report"
+    result = _run(out, report, editorial_profile=EDITORIAL_HALLOWEEN_V1)
+    assert result.returncode == 0, result.stdout + result.stderr
+    payload = json.loads((report / "b2c3_preflight.json").read_text())
+    assert payload["diagnostic"]["status"] == "PASS_DIAGNOSTIC_TECHNIQUE"
+    assert payload["diagnostic"]["qa_status"] == "PASS"
+    assert payload["diagnostic"]["qa_label"] == "QA C4 éditoriale"
+    assert payload["diagnostic"]["inputs"]["editorial_profile"] == EDITORIAL_HALLOWEEN_V1
+    findings = payload["findings"]
+    assert len([f for f in findings if f["rule_id"] == "pip.bbox" and f["severity"] == "INFO"]) == 6
+    assert not any(f["rule_id"] == "pip.bbox" and f["severity"] == "BLOCKER" for f in findings)
+    assert not any(f["rule_id"] == "font.editorial_role_size" for f in findings)
+
+
+def test_unknown_c4_profile_is_refused_before_analysis(c2_out, tmp_path):
+    result = _run(c2_out, tmp_path / "r", editorial_profile="halloween-editorial-v99")
+    assert result.returncode == 2
+    assert not (tmp_path / "r").exists()

@@ -7,6 +7,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Required for byte-identical trusted PDF replay and oracle proofs.
+      SOURCE_DATE_EPOCH: "1780000000"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +47,16 @@ jobs:
           --require-head-tree
           --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
           --proof dist/b2c2-oracle-proof.json
+        env:
+          LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
+      # Fourth oracle: B2-C4 determinism, isolation and traceability of the
+      # opt-in editorial profile (no canonical C4 reference pinned yet).
+      - run: >-
+          python tools/verify_b2c4_oracle.py
+          --candidate-repo .
+          --require-head-tree
+          --approvals-sha256 "$LAFRACTALE_APPROVALS_SHA256"
+          --proof dist/b2c4-oracle-proof.json
         env:
           LAFRACTALE_APPROVALS_SHA256: ${{ secrets.LAFRACTALE_APPROVALS_SHA256 }}
       - run: python -m lafractale validate books/halloween_2026/book.yaml
@@ -121,6 +134,7 @@ jobs:
             dist/b2b-oracle-proof.json
             dist/b2c1-oracle-proof.json
             dist/b2c2-oracle-proof.json
+            dist/b2c4-oracle-proof.json
             dist/b2c3-report/
             dist/ci-halloween-routed/previews/
             dist/ci-halloween-placed/previews/

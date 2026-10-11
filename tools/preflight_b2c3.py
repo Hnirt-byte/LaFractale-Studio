@@ -46,10 +46,13 @@ import fitz  # noqa: E402  (PyMuPDF)
 
 from lafractale.activities.engine import generate, stable_seed  # noqa: E402
 from lafractale.config.schema import load_book  # noqa: E402
+from lafractale.editorial import editorial_spec, transform_editorial  # noqa: E402
+from lafractale.quality.checks import validate_collection  # noqa: E402
 from lafractale.illustrations.placement import (  # noqa: E402
     PIP_PLACEMENT_HALLOWEEN_V2,
     build_pip_placement_plan,
     placed_composition,
+    placed_image_box,
     resolve_pip_placement_mode,
 )
 from lafractale.illustrations.routing import (  # noqa: E402
@@ -183,17 +186,35 @@ def _center_in(bbox, region_pdf) -> bool:
 # --------------------------------------------------------------------------
 # Layout recomputation from the verified Book (authority, not the manifest).
 # --------------------------------------------------------------------------
-def _recompute_layouts(book):
+def _recompute_layouts(book, *, editorial_profile: str | None = None):
+    """Recompute authoritative C2/C4 layouts from Book + static profile.
+
+    With no profile, this is the historical C2 path byte-for-byte.  C4 first
+    rebuilds and validates the historical activities, then applies the closed
+    static transformation; it never trusts a manifest or output payload.
+    """
+    editorial = editorial_spec(editorial_profile)
     specs = demo_specs(book)
     regular, bold = fonts()
     activities = [generate(spec, stable_seed(book.book_id, spec.id, DEMO_SEED)) for spec in specs]
+    errors = validate_collection(activities)
+    if errors:
+        raise PreflightError("Activités historiques invalides : " + " | ".join(errors))
+    if editorial is not None:
+        activities = [transform_editorial(activity, book, editorial.profile_id)
+                      for activity in activities]
+        errors = validate_collection(activities, moon_len=8)
+        if errors:
+            raise PreflightError("Activités éditoriales invalides : " + " | ".join(errors))
     interiors = []
     answers = []
     for index, act in enumerate(activities, 1):
         base = compose_page(act, book.data, index=index, count=len(activities),
-                            answer_key=False, regular=regular, bold=bold, text_width=_measure)
+                            answer_key=False, regular=regular, bold=bold, text_width=_measure,
+                            editorial=editorial)
         base_ak = compose_page(act, book.data, index=index, count=len(activities),
-                               answer_key=True, regular=regular, bold=bold, text_width=_measure)
+                               answer_key=True, regular=regular, bold=bold, text_width=_measure,
+                               editorial=editorial)
         interiors.append(placed_composition(base, "intro_right", text_width=_measure))
         answers.append(placed_composition(base_ak, "intro_right", text_width=_measure))
     return activities, interiors, answers
@@ -202,7 +223,8 @@ def _recompute_layouts(book):
 # --------------------------------------------------------------------------
 # Per-page analysis
 # --------------------------------------------------------------------------
-def _analyze_page(page, layout, *, source: str, page_label: str, findings: list):
+def _analyze_page(page, layout, *, source: str, page_label: str, findings: list,
+                  editorial_profile: str | None = None):
     page_h = page.rect.height
     page_w = page.rect.width
     # --- structure ---
@@ -324,6 +346,25 @@ def _analyze_page(page, layout, *, source: str, page_label: str, findings: list)
                               "contrast_vs_white": contrast},
                     expected="contraste de consigne >= 4.5:1 (WCAG AA, revue humaine)",
                     evidence="contraste de consigne sous 4.5:1", bbox_pt=bbox))
+        if editorial_profile is not None:
+            text = span["text"].strip()
+            target = None
+            target_role = None
+            if role in ("consigne_fr", "consigne_en"):
+                target, target_role = 12.0, role
+            elif text in {"TROUVE LE CHEMIN", "RELIE LES POINTS", "RELIE LES JUMEAUX"}:
+                target, target_role = 12.0, "libelle_activite"
+            elif text in {"D = Départ", "A = Arrivée"}:
+                target, target_role = 11.0, "legende"
+            elif role == "activite" and text in {str(number) for number in range(1, 9)}:
+                target, target_role = 11.0, "numero_points"
+            if target is not None and size < target - 0.1:
+                findings.append(_finding(
+                    "font.editorial_role_size", KIND_REQUIREMENT, SEV_MAJOR,
+                    source=source, page=page_label,
+                    observed={"text": text, "size_pt": round(size, 2), "role": target_role},
+                    expected=f">= {target:.0f} pt pour profil éditorial C4",
+                    evidence="taille C4 déclarée non respectée", bbox_pt=bbox))
 
     # --- drawings: line widths and grey fills ---
     content_boxes = []
@@ -394,6 +435,26 @@ def _analyze_page(page, layout, *, source: str, page_label: str, findings: list)
             findings.append(_finding(
                 "image.unverifiable", KIND_UNKNOWN, SEV_MAJOR, source=source, page=page_label,
                 observed=str(exc), expected="image decodable", evidence=f"xref={xref}"))
+
+    # The Pip image itself (not merely its enlarged technical companion slot)
+    # remains anchored to the frozen C2 V2 48 pt `intro_right` geometry.
+    if len(images) == 1:
+        observed_bbox = tuple(round(value, 2) for value in images[0].get("bbox", ()))
+        expected_image = _to_pdf_rect(placed_image_box(layout, "intro_right"), page_h)
+        expected_bbox = tuple(round(value, 2) for value in expected_image)
+        if len(observed_bbox) != 4 or any(abs(a - b) > 0.1
+                                           for a, b in zip(observed_bbox, expected_bbox)):
+            findings.append(_finding(
+                "pip.bbox", KIND_REQUIREMENT, SEV_BLOCKER, source=source, page=page_label,
+                observed=list(observed_bbox), expected=list(expected_bbox),
+                evidence="bbox image Pip != ancrage C2 V2 intro_right 48 pt",
+                bbox_pt=images[0].get("bbox")))
+        else:
+            findings.append(_finding(
+                "pip.bbox", KIND_REQUIREMENT, SEV_INFO, source=source, page=page_label,
+                observed=list(observed_bbox), expected=list(expected_bbox),
+                evidence="bbox image Pip == ancrage C2 V2 intro_right 48 pt",
+                bbox_pt=images[0].get("bbox")))
 
     # --- content bounds + margins + edge proximity ---
     boxes = list(content_boxes)
@@ -510,7 +571,7 @@ def _build_markdown(report: dict) -> str:
         "# LaFractale Studio — B2-C3 — préflight prépresse (diagnostic read-only)",
         "",
         f"- Statut de l'outil (diagnostic technique) : **{report['diagnostic']['status']}**",
-        f"- QA C2 historique : **{report['diagnostic']['qa_status']}**",
+        f"- {report['diagnostic'].get('qa_label', 'QA C2 historique')} : **{report['diagnostic']['qa_status']}**",
         f"- État prépresse des pages : **{report['prepress']['status']}**",
         f"- Fond perdu : **{report['prepress']['bleed']['decision']}**",
         f"- Décision éditoriale : **{report['editorial']['status']}**",
@@ -547,6 +608,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--policy", default=PIP_PLACEMENT_HALLOWEEN_V2,
                         help="Politique de placement C2 (V2 uniquement)")
     parser.add_argument("--approvals-sha256", required=True, help="Empreinte externe du registre")
+    parser.add_argument("--editorial-profile",
+                        help="Profil éditorial C4 explicite ; absent = préflight C2 historique")
     parser.add_argument("--report-dir", type=Path, required=True,
                         help="Répertoire de rapport HORS de --out")
     args = parser.parse_args(argv)
@@ -556,6 +619,7 @@ def main(argv: list[str] | None = None) -> int:
     report_dir = Path(os.path.abspath(args.report_dir))
     policy = args.policy
     pin = args.approvals_sha256
+    editorial_profile = args.editorial_profile
 
     findings: list = []
 
@@ -567,6 +631,11 @@ def main(argv: list[str] | None = None) -> int:
             raise PreflightError(f"Politique de placement non autorisée : {policy!r}")
         if resolve_pip_placement_mode(policy) != PIP_PLACEMENT_HALLOWEEN_V2:
             raise PreflightError("Politique de placement non résolvable")
+        # Static closed-profile resolution; no output/manifest field is authority.
+        try:
+            editorial_spec(editorial_profile)
+        except Exception as exc:  # noqa: BLE001
+            raise PreflightError(f"Profil éditorial non autorisé : {editorial_profile!r}") from exc
     except PreflightError as exc:
         print(f"ERREUR : {exc}", file=sys.stderr)
         return 2
@@ -583,18 +652,23 @@ def main(argv: list[str] | None = None) -> int:
             book, policy_id=ROUTING_HALLOWEEN_PIP_DEMO_V1, trusted_approvals_sha256=pin)
         plan = build_pip_placement_plan(
             book, route, policy_id=PIP_PLACEMENT_HALLOWEEN_V2, trusted_approvals_sha256=pin)
-        activities, interior_layouts, answer_layouts = _recompute_layouts(book)
+        activities, interior_layouts, answer_layouts = _recompute_layouts(
+            book, editorial_profile=editorial_profile)
     except Exception as exc:  # noqa: BLE001
         print(f"ERREUR : source de confiance invalide : {exc}", file=sys.stderr)
         return 2
 
-    # 2. Historical C2 QA gate (subprocess). A failure is a BLOCKER.
+    # 2. QA gate: historical C2 by default, explicit C4 only with the profile.
+    qa_expected = ("QA C4 éditoriale OK" if editorial_profile is not None
+                   else "QA C2 historique OK")
     qa_cmd = [
         sys.executable, "-m", "lafractale", "qa", str(out), "--book", str(book_path),
         "--illustration-routing", ROUTING_HALLOWEEN_PIP_DEMO_V1,
         "--pip-placement", PIP_PLACEMENT_HALLOWEEN_V2,
         "--approvals-sha256", pin,
     ]
+    if editorial_profile is not None:
+        qa_cmd.extend(["--editorial-profile", editorial_profile])
     qa_env = os.environ.copy()
     qa_env.pop("PYTHONHOME", None)
     qa_env.pop("PYTHONPATH", None)
@@ -605,12 +679,12 @@ def main(argv: list[str] | None = None) -> int:
     if not qa_ok:
         findings.append(_finding(
             "gate.qa_failure", KIND_REQUIREMENT, SEV_BLOCKER, source="gate", page="-",
-            observed=f"rc={qa.returncode}", expected="QA C2 historique OK",
+            observed=f"rc={qa.returncode}", expected=qa_expected,
             evidence=(qa.stderr or qa.stdout).strip()[:500]))
     else:
         findings.append(_finding(
             "gate.qa_pass", KIND_REQUIREMENT, SEV_INFO, source="gate", page="-",
-            observed="rc=0", expected="QA C2 historique OK", evidence=""))
+            observed="rc=0", expected=qa_expected, evidence=""))
 
     # 3. Read the two PDFs from stable, symlink-free byte snapshots.
     pdf_bytes = {}
@@ -645,7 +719,7 @@ def main(argv: list[str] | None = None) -> int:
                 for index, page in enumerate(doc):
                     label = f"p{index + 1} ({page_order[index]})"
                     _analyze_page(page, layouts[index], source=name, page_label=label,
-                                  findings=findings)
+                                  findings=findings, editorial_profile=editorial_profile)
                     board_bytes = _render_board(pdf_bytes[name], index)
                     board_name = f"board_{name[:-4]}_{index + 1:02d}.png"
                     boards.append(board_name)
@@ -756,6 +830,7 @@ def main(argv: list[str] | None = None) -> int:
         "diagnostic": {
             "status": diagnostic_status,
             "qa_status": "PASS" if qa_ok else "FAIL",
+            **({"qa_label": "QA C4 éditoriale"} if editorial_profile is not None else {}),
             "approvals_pin": "provided (64 hex, non enregistré dans les preuves)",
             "head": head,
             "tree": tree,
@@ -763,6 +838,7 @@ def main(argv: list[str] | None = None) -> int:
                 "out": str(out),
                 "book": str(book_path),
                 "policy": policy,
+                **({"editorial_profile": editorial_profile} if editorial_profile is not None else {}),
             },
             "book_sha256": book.source_sha256,
             "plan_sha256": book.source_plan_sha256,

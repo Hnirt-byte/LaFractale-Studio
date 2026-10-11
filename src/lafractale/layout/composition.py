@@ -10,6 +10,7 @@ from math import isfinite
 from typing import Callable
 
 from lafractale.activities.models import Activity
+from lafractale.editorial import EditorialSpec
 
 
 @dataclass(frozen=True)
@@ -130,7 +131,8 @@ def validate_composition(layout: PageComposition, *, text_width: TextWidth) -> N
 
 def compose_page(activity: Activity, book: dict, *, index: int, count: int,
                  answer_key: bool, regular: str, bold: str,
-                 text_width: TextWidth) -> PageComposition:
+                 text_width: TextWidth,
+                 editorial: EditorialSpec | None = None) -> PageComposition:
     """Produce the same layout for the same validated activity and trim size.
 
     Explicitly refuse unsupported trim sizes rather than silently scaling text
@@ -169,7 +171,9 @@ def compose_page(activity: Activity, book: dict, *, index: int, count: int,
                    max_lines=2, text_width=text_width)
     prompt_fr = _block(fr_area, activity.prompt_fr, font=regular, size=12, leading=16,
                        max_lines=2, text_width=text_width)
-    prompt_en = _block(en_area, activity.prompt_en, font=regular, size=10, leading=14,
+    en_size = editorial.prompt_en_size if editorial is not None else 10
+    en_leading = editorial.prompt_en_leading if editorial is not None else 14
+    prompt_en = _block(en_area, activity.prompt_en, font=regular, size=en_size, leading=en_leading,
                        max_lines=1, text_width=text_width)
     layout = PageComposition(page, safe, header, scene, prompt_fr, prompt_en,
                              board, companion_slot, footer, title, label, answer_key)

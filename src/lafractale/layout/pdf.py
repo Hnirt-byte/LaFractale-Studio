@@ -32,6 +32,7 @@ from lafractale.illustrations.routing import IllustrationRoute, verify_illustrat
 from lafractale.illustrations.placement import (PipPlacementPlan, build_pip_placement_plan,
     placed_composition, resolve_pip_placement_mode, verify_pip_placement_plan)
 from lafractale.story.plan import demo_specs
+from lafractale.editorial import (EditorialSpec, editorial_spec, transform_editorial)
 
 
 def fonts() -> tuple[str, str]:
@@ -56,19 +57,20 @@ def _draw_text(c: canvas.Canvas, text: TextBlock, *, gray: float = 0.07) -> None
         c.drawString(text.region.x, text.region.top - text.size - index * text.leading, line)
 
 
-def _frame(c: canvas.Canvas, box: Rect) -> None:
+def _frame(c: canvas.Canvas, box: Rect, editorial: EditorialSpec | None = None) -> None:
     # Contrast and whitespace are optimized for A4/US-letter size monochrome
     # proofing. They are not a substitute for press-preflight checks.
-    c.setFillGray(.978)
+    c.setFillGray(editorial.board_fill if editorial is not None else .978)
     c.setStrokeGray(.62)
     c.setLineWidth(1.3)
     c.roundRect(box.x, box.y, box.width, box.height, 16, stroke=1, fill=1)
 
 
 def _draw_shell(c: canvas.Canvas, layout, activity: Activity, regular: str, bold: str,
-                index: int, total: int, artwork: VerifiedArtwork | None = None) -> None:
+                index: int, total: int, artwork: VerifiedArtwork | None = None,
+                editorial: EditorialSpec | None = None) -> None:
     header = layout.header
-    c.setFillGray(.945)
+    c.setFillGray(editorial.header_fill if editorial is not None else .945)
     c.setStrokeGray(.58)
     c.setLineWidth(1.1)
     c.roundRect(header.x, header.y, header.width, header.height, 14, fill=1, stroke=1)
@@ -120,15 +122,16 @@ def _draw_shell(c: canvas.Canvas, layout, activity: Activity, regular: str, bold
         raise ValueError("Pied de page trop long")
     c.drawString(layout.footer.x + 2, layout.footer.y + 15, footer_message)
     c.drawRightString(layout.footer.right - 2, layout.footer.y + 15, f"{index}/{total}")
-    _frame(c, layout.board)
+    _frame(c, layout.board, editorial)
     c.setFillGray(.28)
-    c.setFont(bold, 9)
+    c.setFont(bold, editorial.board_label_size if editorial is not None else 9)
     label = {"maze": "TROUVE LE CHEMIN", "match": "RELIE LES JUMEAUX",
              "connect_dots": "RELIE LES POINTS"}[activity.type]
     c.drawString(layout.board.x + 22, layout.board.top - 27, label)
 
 
-def _maze(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str) -> None:
+def _maze(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str,
+          editorial: EditorialSpec | None = None) -> None:
     geometry = act.geometry
     size = geometry["size"]
     cell = min((board.width - 80) / size, (board.height - 95) / size)
@@ -174,7 +177,7 @@ def _maze(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: st
         c.setFont(bold, 12)
         c.drawCentredString(px, py - 4, marker)
     c.setFillGray(.22)
-    c.setFont(bold, 10)
+    c.setFont(bold, editorial.legend_size if editorial is not None else 10)
     c.drawString(origin_x, origin_y - 24, "D = Départ")
     c.drawRightString(origin_x + span, origin_y - 24, "A = Arrivée")
 
@@ -256,7 +259,33 @@ def _match(c: canvas.Canvas, act: Activity, board: Rect, solution: bool) -> None
         c.restoreState()
 
 
-def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str) -> list[tuple[float, float]]:
+def _segment_intersects_rect(a: tuple[float, float], b: tuple[float, float], box: Rect) -> bool:
+    """Inclusive segment-vs-rectangle test for answer-line-safe point labels."""
+    x0, y0 = a
+    x1, y1 = b
+    dx, dy = x1 - x0, y1 - y0
+    enter, leave = 0.0, 1.0
+    for p, q in ((-dx, x0 - box.x), (dx, box.right - x0),
+                 (-dy, y0 - box.y), (dy, box.top - y0)):
+        if abs(p) < 1e-12:
+            if q < 0:
+                return False
+            continue
+        t = q / p
+        if p < 0:
+            if t > leave:
+                return False
+            enter = max(enter, t)
+        else:
+            if t < enter:
+                return False
+            leave = min(leave, t)
+    return True
+
+
+def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str,
+                       *, avoid_segments: tuple[tuple[tuple[float, float],
+                                                      tuple[float, float]], ...] = ()) -> list[tuple[float, float]]:
     """Place every number within the panel, away from other dots and labels."""
     chosen: list[Rect] = []
     output: list[tuple[float, float]] = []
@@ -274,6 +303,8 @@ def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str
                 continue
             if any((cx - px) ** 2 + (cy - py) ** 2 < 13 ** 2 for px, py in points):
                 continue
+            if any(_segment_intersects_rect(start, end, box) for start, end in avoid_segments):
+                continue
             chosen.append(box)
             output.append((cx, cy - 4))
             break
@@ -282,14 +313,19 @@ def _labels_for_points(points: list[tuple[float, float]], board: Rect, bold: str
     return output
 
 
-def _dots(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str) -> None:
+def _dots(c: canvas.Canvas, act: Activity, board: Rect, solution: bool, bold: str,
+          editorial: EditorialSpec | None = None) -> None:
     points = act.geometry["points"]
     if len(points) > 30:
         raise ValueError("Trop de points pour la fiche V0.2-B")
     x0, y0 = board.x + 67, board.y + 42
     x_span, y_span = board.width - 134, board.height - 110
     coords = [(x0 + p["x"] * x_span, y0 + p["y"] * y_span) for p in points]
-    positions = _labels_for_points(coords, board, bold)
+    # C4 only: choose label positions that also remain clear of the answer path.
+    # Historical outputs keep the original label policy byte-for-byte.
+    avoid_segments = (tuple(zip(coords, coords[1:] + coords[:1]))
+                      if editorial is not None else ())
+    positions = _labels_for_points(coords, board, bold, avoid_segments=avoid_segments)
     if solution:
         c.saveState()
         c.setStrokeGray(.50)
@@ -316,11 +352,11 @@ def _freeze(value):
     return value
 
 
-def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
+def _render_snapshot(activities: list[Activity], *, editorial_profile: str | None = None) -> tuple[Activity, ...]:
     """Validate a completely detached copy, then render with immutable data."""
     copies = copy.deepcopy(activities)
     verify_text_policy([a.as_dict() for a in copies], location="activités PDF")
-    errors = validate_collection(copies)
+    errors = validate_collection(copies, moon_len=(8 if editorial_profile is not None else 12))
     if errors:
         raise ValueError("Activités PDF invalides : " + "; ".join(errors))
     return tuple(replace(act, geometry=_freeze(act.geometry), answer=_freeze(act.answer))
@@ -329,19 +365,25 @@ def _render_snapshot(activities: list[Activity]) -> tuple[Activity, ...]:
 
 def _routed_render_snapshot(activities: list[Activity], *, approved_book: Book,
                             illustration_route: IllustrationRoute,
-                            trusted_approvals_sha256: str) -> tuple[Activity, ...]:
+                            trusted_approvals_sha256: str,
+                            editorial_profile: str | None = None) -> tuple[Activity, ...]:
     """Bind a routed render to the complete canonical C1 activity sequence.
 
     A valid route authorizes only its three independently regenerated Halloween
     activities in canonical PDF order; it never authorizes an arbitrary prefix
     or caller-supplied activity list.
+
+    When ``editorial_profile`` is set, each activity must equal the STATIC C4
+    transform of its canonical C1 regeneration (``transform_editorial(generate
+    (spec, seed), profile)``) — the editorial plan is independently recomputed
+    here, never accepted from the caller.
     """
     if type(illustration_route) is not IllustrationRoute:
         raise IllustrationError("Objet de routage non canonique")
     verify_book_snapshot(approved_book)
     specs = tuple(demo_specs(approved_book))
     detached = tuple(copy.deepcopy(activities))
-    rendering = _render_snapshot(list(detached))
+    rendering = _render_snapshot(list(detached), editorial_profile=editorial_profile)
     if len(specs) != 3 or len(rendering) != len(specs):
         raise IllustrationError("Séquence d'activités routée C1 incomplète ou supplémentaire")
     if len(illustration_route.bindings) != len(specs):
@@ -349,6 +391,8 @@ def _routed_render_snapshot(activities: list[Activity], *, approved_book: Book,
     for index, (activity, spec, binding) in enumerate(
             zip(detached, specs, illustration_route.bindings, strict=True), start=1):
         expected_activity = generate(spec, activity.seed)
+        if editorial_profile is not None:
+            expected_activity = transform_editorial(expected_activity, approved_book, editorial_profile)
         if activity != expected_activity:
             raise IllustrationError("Activité routée non conforme aux spécifications canoniques")
         if (binding.demo_index, binding.activity_id, binding.source_page, binding.activity_type) != (
@@ -363,10 +407,11 @@ def _routed_render_snapshot(activities: list[Activity], *, approved_book: Book,
 
 def _page_layout(act: Activity, book_snapshot, *, index: int, count: int, answer_key: bool,
                  regular: str, bold: str,
-                 placement: PipPlacementPlan | None):
+                 placement: PipPlacementPlan | None,
+                 editorial: EditorialSpec | None = None):
     """Compose one page, applying the canonical C2 placement when requested."""
     layout = compose_page(act, book_snapshot, index=index, count=count, answer_key=answer_key,
-                          regular=regular, bold=bold, text_width=_measure)
+                          regular=regular, bold=bold, text_width=_measure, editorial=editorial)
     if placement is None:
         return layout
     return placed_composition(layout, placement.anchor_for(act, demo_index=index),
@@ -378,7 +423,8 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
               illustration_route: IllustrationRoute | None = None,
               pip_placement: str | None = None,
               approved_book: Book | None = None,
-              trusted_approvals_sha256: str | None = None) -> None:
+              trusted_approvals_sha256: str | None = None,
+              editorial_profile: str | None = None) -> None:
     """Render from a checked immutable snapshot to a new, safe file only.
 
     A writer calling compose_page cannot alter geometry passed to _dots().
@@ -394,6 +440,9 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
     if pip_placement is not None and artwork is not None:
         raise IllustrationError("Visuel historique et placement C2 mutuellement exclusifs")
     placement_mode = resolve_pip_placement_mode(pip_placement)
+    editorial = editorial_spec(editorial_profile)
+    if editorial is not None and (illustration_route is None or pip_placement is None):
+        raise IllustrationError("Profil éditorial exige la route C1 et le placement C2 V2")
     rendering: tuple[Activity, ...]
     placement: PipPlacementPlan | None = None
     if artwork is not None:
@@ -415,6 +464,7 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
         rendering = _routed_render_snapshot(
             activities, approved_book=approved_book, illustration_route=illustration_route,
             trusted_approvals_sha256=trusted_approvals_sha256,
+            editorial_profile=editorial_profile,
         )
         if placement_mode != "none":
             assert isinstance(pip_placement, str)
@@ -436,7 +486,8 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
     # destination file is opened or created, so a refusal never writes output.
     layouts = tuple(
         _page_layout(act, book_snapshot, index=index, count=len(rendering),
-                     answer_key=answer_key, regular=regular, bold=bold, placement=placement)
+                     answer_key=answer_key, regular=regular, bold=bold, placement=placement,
+                     editorial=editorial)
         for index, act in enumerate(rendering, start=1)
     )
     page_artworks = tuple(
@@ -445,18 +496,29 @@ def write_pdf(path: Path, activities: list[Activity], book: dict, *, answer_key:
         for index, act in enumerate(rendering, start=1)
     )
     with new_regular_file(path) as destination:
-        c = canvas.Canvas(destination, pagesize=(width, height), invariant=1, pageCompression=1)
+        canvas_kwargs = {"pagesize": (width, height), "invariant": 1, "pageCompression": 1}
+        if editorial is not None:
+            # C4 only: remove the unused base-14 Helvetica reference by seeding
+            # the canvas with the embedded DejaVu font instead of the default.
+            canvas_kwargs["initialFontName"] = regular
+        c = canvas.Canvas(destination, **canvas_kwargs)
         c.setTitle(("CORRIGES" if answer_key else "DEMONSTRATION") + " - " + book_snapshot["title"])
         c.setAuthor(book_snapshot["publisher"])
         for index, (act, layout, page_artwork) in enumerate(
                 zip(rendering, layouts, page_artworks, strict=True), start=1):
-            _draw_shell(c, layout, act, regular, bold, index, len(rendering), artwork=page_artwork)
+            _draw_shell(c, layout, act, regular, bold, index, len(rendering),
+                        artwork=page_artwork, editorial=editorial)
             if act.type == "maze":
-                _maze(c, act, layout.board, answer_key, bold)
+                _maze(c, act, layout.board, answer_key, bold, editorial)
             elif act.type == "match":
                 _match(c, act, layout.board, answer_key)
             elif act.type == "connect_dots":
-                _dots(c, act, layout.board, answer_key, bold)
+                # Preserve the historical callable seam exactly when C4 is disabled:
+                # security tests and extensions may wrap the five-argument renderer.
+                if editorial is None:
+                    _dots(c, act, layout.board, answer_key, bold)
+                else:
+                    _dots(c, act, layout.board, answer_key, bold, editorial)
             else:
                 raise ValueError(f"Type de rendu absent : {act.type}")
             c.showPage()
