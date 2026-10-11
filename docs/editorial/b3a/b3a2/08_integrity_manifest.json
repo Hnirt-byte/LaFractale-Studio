@@ -1,0 +1,80 @@
+{
+  "base_b2c4_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_b2c4_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "ci_commit": "6ad30453cdd07a4f98237c22b8221fde42d6ceed",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "5407a9bdab58eb6bd75c2d2df6c0f9a081747e87c7db490d880b8c701fe42181"
+    },
+    {
+      "path": "00_README.md",
+      "sha256": "305561dfaf99492a15d84ac7f8c370d31149b9544c1c6b16f96e812470499379"
+    },
+    {
+      "path": "01_chemin_de_fer_version_A_56_pages.csv",
+      "sha256": "050c93d45276425e8e3abb0a9caf20fcff509cd09a99e5812a17b598f200c35a"
+    },
+    {
+      "path": "01_chemin_de_fer_version_B_56_pages.csv",
+      "sha256": "1e7a8d05118b06cc4f7a148b80752a06560a5abbbd7cb695d3796fd2cb164996"
+    },
+    {
+      "path": "01_correspondance_ancienne_vers_nouvelle_version_A.csv",
+      "sha256": "48f1e1ea50cfa5970b744feead11bfde7e50e65bb4b64a8a469ae03979348df1"
+    },
+    {
+      "path": "01_correspondance_ancienne_vers_nouvelle_version_B.csv",
+      "sha256": "f657558e01ee4c8d422b2441632c73ef452a8405cc43f02fc8e376374d166595"
+    },
+    {
+      "path": "02_comparatif_versions.md",
+      "sha256": "b09a06bfb411555d228d51fc7f5f12e64d1cfa05101a4ae7eb44808034c28155"
+    },
+    {
+      "path": "02_progression_difficultes_p40_p48.csv",
+      "sha256": "e5d283dbff921513f373a692f02790939bfb8092daa9242b782b69bad45503ca"
+    },
+    {
+      "path": "03_controle_corriges_conserves.csv",
+      "sha256": "5dcc621f4c48bba2adb516fd642323698c3ef9fd5bb15f55264305f3bb30bfe4"
+    },
+    {
+      "path": "04_verification_c4_ci.md",
+      "sha256": "32b36c71ec5148b6c072e63358d5f918872080afd5469cb453ccb69341fa85b3"
+    },
+    {
+      "path": "05_lexique_p55_lisibilite.md",
+      "sha256": "6c26ec0e1988d665a981eea35d6755ad5cf3ceac3a36261dd2264f464a128d47"
+    },
+    {
+      "path": "06_maquette_p56_diplome_cloture.md",
+      "sha256": "69c465991d2759cc34137e1c1b06b268067610cd2a9f8e868a6ef687f7e07f2c"
+    },
+    {
+      "path": "07_validation_evidence.json",
+      "sha256": "777b8dfd7596f3f7fa605485f2ea695668f5b89a3d6d072d4b44df8d255fba05"
+    },
+    {
+      "path": "mockups/p55_lexique_18_paires_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3748883efe3ad1b77f8f29188e8a823c8bbc1a73d011ed849e21ee7e0580ec09"
+    },
+    {
+      "path": "mockups/p56_diplome_cloture_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3b7e8ae05c2e17f93d6da82949a610445bac672fd076c19b55043933a4ab60d3"
+    },
+    {
+      "path": "mockups/verification.json",
+      "sha256": "09165e34195c9dd6dfc932eac8b4a7dbb3a560c3d79a001a440f4f5bbcebd3df"
+    }
+  ],
+  "schema": "lafractale-b3a2-integrity-v1",
+  "status": {
+    "B3A_PLAN": "DRAFT_FOR_REVIEW",
+    "EDITORIAL": "PENDING",
+    "KDP": "FORBIDDEN",
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN",
+    "PRODUCTION_GENERATION": "FORBIDDEN"
+  }
+}

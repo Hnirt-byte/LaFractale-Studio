@@ -99,6 +99,74 @@
       "sha256": "05dd55c0bd6cd3724c9d024cb1ff9c1f70637c74f81defcde3395e3bd4a8f23e"
     },
     {
+      "path": "b3a2/.gitattributes",
+      "sha256": "5407a9bdab58eb6bd75c2d2df6c0f9a081747e87c7db490d880b8c701fe42181"
+    },
+    {
+      "path": "b3a2/00_README.md",
+      "sha256": "305561dfaf99492a15d84ac7f8c370d31149b9544c1c6b16f96e812470499379"
+    },
+    {
+      "path": "b3a2/01_chemin_de_fer_version_A_56_pages.csv",
+      "sha256": "050c93d45276425e8e3abb0a9caf20fcff509cd09a99e5812a17b598f200c35a"
+    },
+    {
+      "path": "b3a2/01_chemin_de_fer_version_B_56_pages.csv",
+      "sha256": "1e7a8d05118b06cc4f7a148b80752a06560a5abbbd7cb695d3796fd2cb164996"
+    },
+    {
+      "path": "b3a2/01_correspondance_ancienne_vers_nouvelle_version_A.csv",
+      "sha256": "48f1e1ea50cfa5970b744feead11bfde7e50e65bb4b64a8a469ae03979348df1"
+    },
+    {
+      "path": "b3a2/01_correspondance_ancienne_vers_nouvelle_version_B.csv",
+      "sha256": "f657558e01ee4c8d422b2441632c73ef452a8405cc43f02fc8e376374d166595"
+    },
+    {
+      "path": "b3a2/02_comparatif_versions.md",
+      "sha256": "b09a06bfb411555d228d51fc7f5f12e64d1cfa05101a4ae7eb44808034c28155"
+    },
+    {
+      "path": "b3a2/02_progression_difficultes_p40_p48.csv",
+      "sha256": "e5d283dbff921513f373a692f02790939bfb8092daa9242b782b69bad45503ca"
+    },
+    {
+      "path": "b3a2/03_controle_corriges_conserves.csv",
+      "sha256": "5dcc621f4c48bba2adb516fd642323698c3ef9fd5bb15f55264305f3bb30bfe4"
+    },
+    {
+      "path": "b3a2/04_verification_c4_ci.md",
+      "sha256": "32b36c71ec5148b6c072e63358d5f918872080afd5469cb453ccb69341fa85b3"
+    },
+    {
+      "path": "b3a2/05_lexique_p55_lisibilite.md",
+      "sha256": "6c26ec0e1988d665a981eea35d6755ad5cf3ceac3a36261dd2264f464a128d47"
+    },
+    {
+      "path": "b3a2/06_maquette_p56_diplome_cloture.md",
+      "sha256": "69c465991d2759cc34137e1c1b06b268067610cd2a9f8e868a6ef687f7e07f2c"
+    },
+    {
+      "path": "b3a2/07_validation_evidence.json",
+      "sha256": "777b8dfd7596f3f7fa605485f2ea695668f5b89a3d6d072d4b44df8d255fba05"
+    },
+    {
+      "path": "b3a2/08_integrity_manifest.json",
+      "sha256": "c1270a01cc600f14dd87985bcd1e5f300a255b3aea185fbc7743b8c903eab34b"
+    },
+    {
+      "path": "b3a2/mockups/p55_lexique_18_paires_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3748883efe3ad1b77f8f29188e8a823c8bbc1a73d011ed849e21ee7e0580ec09"
+    },
+    {
+      "path": "b3a2/mockups/p56_diplome_cloture_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3b7e8ae05c2e17f93d6da82949a610445bac672fd076c19b55043933a4ab60d3"
+    },
+    {
+      "path": "b3a2/mockups/verification.json",
+      "sha256": "09165e34195c9dd6dfc932eac8b4a7dbb3a560c3d79a001a440f4f5bbcebd3df"
+    },
+    {
       "path": "source_pack/00_LIRE_EN_PREMIER.md",
       "sha256": "f4a372f46233d403d26fdb4ad6a07de8dbe8a52c00542b5e0c94477fb040f846"
     },
@@ -152,13 +220,15 @@
     }
   ],
   "notes": [
-    "B3-A baseline evidence remains historical; this manifest v2 covers B3-A.1 documentary corrections and explicitly labelled non-production PDFs."
+    "B3-A.2 compares two documentary six-page answer variants. All PDFs are explicitly NON PRODUCTION."
   ],
-  "schema": "lafractale-b3a-integrity-v2",
+  "schema": "lafractale-b3a-integrity-v3",
   "status": {
     "B3A_PLAN": "DRAFT_FOR_REVIEW",
     "EDITORIAL": "PENDING",
     "KDP": "FORBIDDEN",
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN",
     "PRODUCTION_GENERATION": "FORBIDDEN"
   }
 }
