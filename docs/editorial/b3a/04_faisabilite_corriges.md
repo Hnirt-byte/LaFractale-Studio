@@ -2,7 +2,7 @@
 
 ## Faits établis
 
-- Activités à solution fermée : **34** (31 graphiques, 3 chiffrées).
+- Activités prévues comme fermées : **34** (31 graphiques, 3 chiffrées).
 - Tracés avec modèle facultatif : p.09, p.19, p.29, p.38 ; ils ne sont pas assimilés à une réponse fermée.
 - Répartition proposée : p.51 = 9, p.52 = 9, p.53 = 8, p.54 = 8, soit **8,5 réponses par page** en moyenne.
 - Aucun essai imprimé à 100 % sur une page 8,5 × 11 pouces ne démontre encore que neuf mini-solutions, numéros, tracés ou chemins restent lisibles.

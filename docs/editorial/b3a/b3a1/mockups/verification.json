@@ -1,0 +1,33 @@
+{
+  "page_size_pt": [
+    612.0,
+    792.0
+  ],
+  "true_print_scale": true,
+  "files": [
+    {
+      "file": "option_4_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "pages": 4,
+      "size_pt": [
+        612.0,
+        792.0
+      ],
+      "all_pages_labeled_nonproduction": true,
+      "sha256": "9d1359008c38d670dafb8b0ab45ac2b4ab9157bd8432217f8d5a0204753556a5"
+    },
+    {
+      "file": "option_6_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "pages": 6,
+      "size_pt": [
+        612.0,
+        792.0
+      ],
+      "all_pages_labeled_nonproduction": true,
+      "sha256": "d2634dc05dc795fea03064e4e8b03f606d1b8c885590468fe5fb76147cc12d43"
+    }
+  ],
+  "notes": [
+    "Synthetic dimensional test only; not a production answer-key.",
+    "Option 6 reallocates p47 and p50 to answer pages; p47 creative content is proposed as an optional extension of p39 and p50 diploma content is proposed to move to p56."
+  ]
+}

@@ -35,10 +35,10 @@ Aucune divergence ne justifie de modifier `books/` ou les contrats B2-C4. La pro
 ## Invariants documentaires contrôlés
 
 - Pagination 01–56 continue et unique : **PASS**.
-- Structure : ouverture 2, quatre chapitres d'activités 48 pages dont diplôme p.50, corrigés p.51–54, lexique p.55, clôture p.56 : **PASS**.
+- Structure : ouverture 2, cinq chapitres narratifs d’activités p.03–49, puis le diplôme p.50, corrigés p.51–54, lexique p.55, clôture p.56 : **PASS**.
 - 17 mécaniques d'activité distinctes, sans répétition de mécanique sur deux activités successives : **PASS**.
 - Les 18 paires du lexique réel `book.yaml` sont toutes couvertes dans les propositions : **PASS**.
-- 34 activités objectivement corrigibles (31 graphiques + 3 chiffrées) correspondent exactement aux 34 lignes de la cartographie : **PASS**.
+- 34 activités prévues comme fermées (31 graphiques + 3 chiffrées) correspondent exactement aux 34 besoins de corrigé cartographiés : **PASS**.
 - Quatre tracés p.09/19/29/38 restent des « modèles facultatifs » et ne sont pas comptés comme réponses fermées : **documenté**.
 
 ## Réserve majeure, non contournée
