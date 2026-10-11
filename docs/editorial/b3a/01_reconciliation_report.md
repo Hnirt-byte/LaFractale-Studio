@@ -29,7 +29,7 @@ Aucune divergence ne justifie de modifier `books/` ou les contrats B2-C4. La pro
 | Page | Référence canonique C4 | État de la proposition B3-A |
 |---:|---|---|
 | 04 | scène `Aide Pip à trouver la sortie`; labyrinthe à solution unique | titre aligné. Les consignes B3-A sont une reformulation à soumettre, pas un changement C4. |
-| 06 | scène `La lune mystérieuse`; croissant fermé de 8 points; ordre obligatoire `1→8→1` | **décision ouverte** : B3-A propose `Le croissant de lune` et une formulation plus courte. La production devra reprendre C4 ou recevoir une validation humaine explicite. |
+| 06 | scène `La lune mystérieuse`; croissant fermé de 8 points; ordre obligatoire `1→8→1` | **décision B3-A.3** : le canon C4 est retenu dans tous les documents actifs ; les formulations historiques restent uniquement dans le pack source de provenance. |
 | 20 | scène `Retrouve les chapeaux jumeaux`; quatre paires | titre/intention alignés. L'anglais B3-A reste une proposition de relecture. |
 
 ## Invariants documentaires contrôlés

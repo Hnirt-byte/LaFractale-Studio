@@ -1,0 +1,36 @@
+{
+  "schema": "lafractale-b3a3-layout-geometry-v1",
+  "p55": {
+    "fr_column": [
+      64,
+      250
+    ],
+    "english_column": [
+      362,
+      548
+    ],
+    "centre_band_width_pt": 112,
+    "pairs": 18,
+    "row_baseline_gap_pt": 28,
+    "pairing_markers": "numbered centre badges only; no cross-column connecting line"
+  },
+  "p56": {
+    "diploma_frame_bottom_y": 430,
+    "name_line": [
+      88,
+      568,
+      524,
+      568
+    ],
+    "smile_label_y": 540,
+    "smile_circle_center": [
+      306,
+      475
+    ],
+    "smile_circle_radius": 40,
+    "name_line_to_circle_top_clearance_pt": 53,
+    "smile_label_to_circle_top_clearance_pt": 25,
+    "frame_bottom_to_circle_clearance_pt": 5,
+    "crossing_rule": "no horizontal rule or frame border is drawn through the smile label or circle"
+  }
+}

@@ -1,6 +1,6 @@
 # Décisions éditoriales ouvertes — validation humaine requise
 
-1. **p.06 C4** — conserver le titre canonique « La lune mystérieuse » ou valider explicitement « Le croissant de lune ». Dans les deux cas, l'ordre C4 `1→8→1` et le croissant fermé à 8 points restent obligatoires pour la démo.
+1. **p.06 C4** — **décision B3-A.3 consignée** : retenir le titre canonique « La lune mystérieuse », le croissant fermé à 8 points et l'ordre C4 `1→8→1` dans tous les documents actifs. Les variantes restent des traces historiques du pack source, non des options actives.
 2. **Corrigés p.51–54** — arbitrer les titres/répartition : pages de chapitre chronologiques ou pages « Corrigés 1–4 » équilibrées `9/9/8/8`.
 3. **Densité des corrigés** — valider ou refuser l'option quatre pages après épreuve à 100 % ; décider d'une réallocation explicite si six ou huit pages sont nécessaires.
 4. **p.55 lexique** — choisir un lexique typographique deux colonnes (sans nouvel asset, option recommandée à ce stade) ou un brief suivi d'une validation humaine pour 18 pictogrammes.

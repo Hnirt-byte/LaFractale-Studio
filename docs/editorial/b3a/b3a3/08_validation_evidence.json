@@ -1,0 +1,97 @@
+{
+  "base_b2c4_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_b2c4_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "bilingual_counts": {
+    "C4_LOCKED": 3,
+    "HUMAN_REVIEW": 9,
+    "KEEP": 20,
+    "REWRITE": 15
+  },
+  "c4_locked_pages": [
+    4,
+    6,
+    20
+  ],
+  "ci": {
+    "commit": "bb4c97f5b0ed0e618b436663b80b82b7aee2a012",
+    "runs": [
+      {
+        "event": "pull_request",
+        "id": "38158153595",
+        "job": "114525293145",
+        "result": "SUCCESS"
+      },
+      {
+        "event": "push",
+        "id": "38158148098",
+        "job": "114525278483",
+        "result": "SUCCESS"
+      }
+    ]
+  },
+  "max_high_sequence": {
+    "A": 3,
+    "B": 2
+  },
+  "mockups": [
+    {
+      "file": "p55_lexique_18_paires_corrige_100pct_NON_PRODUCTION.pdf",
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "pages": 1,
+      "required_text": [
+        "NON PRODUCTION",
+        "Mini-lexique",
+        "toile d'araignée",
+        "spiderweb"
+      ],
+      "sha256": "de2d81dae2ef42e4e150df1a4a206730c62ac6b35940d5271d5100a39d77c811"
+    },
+    {
+      "file": "p56_diplome_cloture_corrige_100pct_NON_PRODUCTION.pdf",
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "pages": 1,
+      "required_text": [
+        "NON PRODUCTION",
+        "MON DIPLÔME",
+        "Mon prénom",
+        "Je dessine mon sourire",
+        "À bientôt avec Pip"
+      ],
+      "sha256": "81a2894fc933c93c73035d4efba404814380f5f6514b86b2662cb7e6c734909e"
+    }
+  ],
+  "scenario_answer_counts": {
+    "A": 33,
+    "B": 31
+  },
+  "scenario_answer_distribution": {
+    "A": [
+      6,
+      6,
+      6,
+      5,
+      5,
+      5
+    ],
+    "B": [
+      6,
+      5,
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  "schema": "lafractale-b3a3-validation-v1",
+  "status": {
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN",
+    "PR_10": "OPEN_NOT_MERGED"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "lafractale-b3a3-mockup-v1",
+  "true_print_scale": true,
+  "marker": "NON PRODUCTION",
+  "files": [
+    {
+      "file": "p55_lexique_18_paires_corrige_100pct_NON_PRODUCTION.pdf",
+      "pages": 1,
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "sha256": "de2d81dae2ef42e4e150df1a4a206730c62ac6b35940d5271d5100a39d77c811",
+      "required_text": [
+        "NON PRODUCTION",
+        "Mini-lexique",
+        "toile d'araignée",
+        "spiderweb"
+      ]
+    },
+    {
+      "file": "p56_diplome_cloture_corrige_100pct_NON_PRODUCTION.pdf",
+      "pages": 1,
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "sha256": "81a2894fc933c93c73035d4efba404814380f5f6514b86b2662cb7e6c734909e",
+      "required_text": [
+        "NON PRODUCTION",
+        "MON DIPLÔME",
+        "Mon prénom",
+        "Je dessine mon sourire",
+        "À bientôt avec Pip"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 version,answer_page,final_activity_page,old_activity_page,title,correction_type,kept
 A,49,4,4,Aide Pip à trouver la sortie,graphique,yes
 A,49,5,5,Qui se cache dans le jardin ?,graphique,yes
-A,49,6,6,Le croissant de lune,graphique,yes
+A,49,6,6,La lune mystérieuse,graphique,yes
 A,49,7,7,L’ombre de la citrouille,graphique,yes
 A,49,10,10,Compte les chauves-souris,chiffre,yes
 A,49,11,11,Les mots de Pip,graphique,yes
@@ -35,7 +35,7 @@ A,54,47,48,Les dernières énigmes,graphique,yes
 A,54,48,49,Je reconnais les mots,graphique,yes
 B,49,4,4,Aide Pip à trouver la sortie,graphique,yes
 B,49,5,5,Qui se cache dans le jardin ?,graphique,yes
-B,49,6,6,Le croissant de lune,graphique,yes
+B,49,6,6,La lune mystérieuse,graphique,yes
 B,49,7,7,L’ombre de la citrouille,graphique,yes
 B,49,10,10,Compte les chauves-souris,chiffre,yes
 B,49,11,11,Les mots de Pip,graphique,yes

@@ -1,4 +1,11 @@
 {
+  "b3a3_p06_canonical_resolution": {
+    "active_prompt_en": "Connect the dots from 1 to 8, then back to 1.",
+    "active_prompt_fr": "Relie les points de 1 à 8, puis reviens au 1.",
+    "active_shape": "croissant fermé 1→8→1",
+    "active_title": "La lune mystérieuse",
+    "source_pack_policy": "Les mentions Le croissant de lune dans source_pack/ restent des données historiques de provenance, jamais des libellés actifs."
+  },
   "base_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
   "base_tree": "72215ac28de46795338997be0bb38781274e80f4",
   "checks": [
