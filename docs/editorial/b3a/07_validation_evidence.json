@@ -1,0 +1,92 @@
+{
+  "base_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "checks": [
+    {
+      "name": "base_commit",
+      "observed": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+      "result": "PASS"
+    },
+    {
+      "name": "base_tree",
+      "observed": "72215ac28de46795338997be0bb38781274e80f4",
+      "result": "PASS"
+    },
+    {
+      "name": "changed_paths_docs_only",
+      "observed": [
+        "docs/editorial/"
+      ],
+      "result": "PASS"
+    },
+    {
+      "name": "historical_page_plan_equals_main",
+      "observed": "6dcc6d9f2a23eddc320303e20f9cfb3f70ad9bb25f42b8b5672dc25ba07f6099",
+      "result": "PASS"
+    },
+    {
+      "name": "imported_pack_manifest",
+      "observed": {
+        "failures": [],
+        "files": 12
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "proposal_56_consecutive",
+      "observed": 56,
+      "result": "PASS"
+    },
+    {
+      "name": "consolidated_56_consecutive",
+      "observed": 56,
+      "result": "PASS"
+    },
+    {
+      "name": "all_statuses_pending_review",
+      "observed": [
+        "À VALIDER"
+      ],
+      "result": "PASS"
+    },
+    {
+      "name": "34_closed_activities_mapped",
+      "observed": {
+        "closed": 34,
+        "mapped": 34
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "answer_distribution_9_9_8_8",
+      "observed": {
+        "51": 9,
+        "52": 9,
+        "53": 8,
+        "54": 8
+      },
+      "result": "PASS"
+    },
+    {
+      "name": "c4_p06_divergence_explicit",
+      "observed": "DIVERGENCE À DÉCIDER : le titre B3-A « Le croissant de lune » et sa consigne courte ne prévalent pas sur C4. Toute production doit reprendre le titre/ordre C4 ou obtenir une validation humaine explicite.",
+      "result": "PASS"
+    },
+    {
+      "name": "no_production_visual_artifacts",
+      "observed": [],
+      "result": "PASS"
+    },
+    {
+      "name": "integrity_manifest_before_evidence",
+      "observed": [],
+      "result": "PASS"
+    }
+  ],
+  "limits": [
+    "Validation documentaire uniquement : elle ne valide ni une séance enfant, ni une épreuve imprimée à 100 %, ni KDP.",
+    "Aucun PDF de production ni asset n’a été généré."
+  ],
+  "overall": "PASS",
+  "schema": "lafractale-b3a-validation-evidence-v1"
+}

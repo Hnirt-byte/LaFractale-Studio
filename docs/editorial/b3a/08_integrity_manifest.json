@@ -1,0 +1,102 @@
+{
+  "base_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "files": [
+    {
+      "path": "01_reconciliation_report.md",
+      "sha256": "ca3d8eef57f785fe9e700dc4a6827b0c2ae1fdb0d71018d77324551ec55850bf"
+    },
+    {
+      "path": "02_chemin_de_fer_consolide.csv",
+      "sha256": "e74cafc454541007c8e8adffb8e425ff413e42288887f5047c0664da7d6bd3bd"
+    },
+    {
+      "path": "02_chemin_de_fer_consolide.md",
+      "sha256": "f48cbdceb9f9ea4fc77fea24d3115ef69f014fed79de247f18b81cea9dd818d9"
+    },
+    {
+      "path": "03_mecanics_inventory.md",
+      "sha256": "8e9c733dc5fe8720926a068aab29c1b0355abc2de47d1d95f6b8f636b3dc81a2"
+    },
+    {
+      "path": "04_faisabilite_corriges.md",
+      "sha256": "21212922c88737d513b3de3a4c1721987d344d4b218a50b233f6de45bfc4b742"
+    },
+    {
+      "path": "05_decisions_ouvertes.md",
+      "sha256": "d2cb77f11b8d97dc36e3e5fa3d672f6117dcbd308846e53f788d1ed8e15c431c"
+    },
+    {
+      "path": "06_gates_validation.md",
+      "sha256": "d3541a4b208557aa6955233e9c225d326649619a657a6f0ab7509b6912b33886"
+    },
+    {
+      "path": "07_validation_evidence.json",
+      "sha256": "3e8aeb1c4a6134b20b081fbdd3eb555056b5c7d3d828249bfcdc2fb5671b14c0"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e2ac405eee82b052e859f4411d5fa6d234642d5e4a45e65515ab2a49648d7126"
+    },
+    {
+      "path": "source_pack/00_LIRE_EN_PREMIER.md",
+      "sha256": "f4a372f46233d403d26fdb4ad6a07de8dbe8a52c00542b5e0c94477fb040f846"
+    },
+    {
+      "path": "source_pack/01_CONTRAT_B3A_v1.0.md",
+      "sha256": "956306f7223ab42776940b4ac583158dc3dc253dd8fd37d2a936149cb534169e"
+    },
+    {
+      "path": "source_pack/02_CHEMIN_DE_FER_56_PAGES.csv",
+      "sha256": "c4a08162c708c8427aa1261bf3a2da06675051bbe3dfef7c2ce8fdebadbc563e"
+    },
+    {
+      "path": "source_pack/02_CHEMIN_DE_FER_56_PAGES.xlsx",
+      "sha256": "85fb903e27ea26299405a6348346673afdac768cff3e8d93a143ac5f8f18f1ef"
+    },
+    {
+      "path": "source_pack/03_CHEMIN_DE_FER_LISIBLE.md",
+      "sha256": "d3342c639abc31decefd7f952dd6f0d42657a9ab00667c0ba788a667d5ad070c"
+    },
+    {
+      "path": "source_pack/04_CARTOGRAPHIE_CORRIGES.csv",
+      "sha256": "fc53fc8d28628bd734a3a087d36d268a6cb9aaf64c86fccdcaa5ee222ac926be"
+    },
+    {
+      "path": "source_pack/05_BIBLE_ET_PROGRESSION.md",
+      "sha256": "2982b5be2f1ca41468140079ac09bef96fa55837966d4e42fc6026d1ccce7faa"
+    },
+    {
+      "path": "source_pack/06_GATES_RECETTE.md",
+      "sha256": "3c32265f2ffb882594f31f6593f5046dbaa5d87bb0edef06ae30c1fc77a59d9b"
+    },
+    {
+      "path": "source_pack/07_PROMPT_HERMES.md",
+      "sha256": "9cf945e290668ffd3f3c0727230ea66fd564206f31cdeb46ea626c603e64c18e"
+    },
+    {
+      "path": "source_pack/08_PROVENANCE_SOURCES.json",
+      "sha256": "aa0bf9ec3373a4bc7f77abc5d8f66f735368b98abd2a7fe2fbabb349d98e0f07"
+    },
+    {
+      "path": "source_pack/09_REFERENCES_KDP.md",
+      "sha256": "c9591635711b9d269548f6e3ef18aa26532dce58d9449d4fd52adce4301505df"
+    },
+    {
+      "path": "source_pack/10_CONTROLE_QUALITE_PACK.md",
+      "sha256": "2438ccafa5f37c47a369c7f9c6c0fce6caa8105da70bd5f091abe49750890ca8"
+    },
+    {
+      "path": "source_pack/11_MANIFEST_SHA256.json",
+      "sha256": "5e10ea6dc2c4982272e168d8f528aec4a2cada5c97c9bc5f4d290c01641f3214"
+    }
+  ],
+  "historical_b2b_commit": "d77e32327fecd0c4a983ef8298581525842c18fc",
+  "schema": "lafractale-b3a-integrity-v1",
+  "statuses": {
+    "B3A_PLAN": "DRAFT_FOR_REVIEW",
+    "EDITORIAL": "PENDING",
+    "KDP": "FORBIDDEN",
+    "PRODUCTION_GENERATION": "FORBIDDEN"
+  }
+}
