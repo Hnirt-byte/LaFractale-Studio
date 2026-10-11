@@ -22,7 +22,7 @@ Seule la permutation p.42/p.43 est proposée :
 
 **Risque narratif :** passage anticipé à l’arrivée des invités avant le rappel du sac. Le titre p.43 peut être lu comme la préparation du sac pour la fête, mais cela requiert validation éditoriale.
 
-## Scénario B — deux respirations créatives, 31 corrigés
+## Scénario B — **plan actif retenu**, deux respirations créatives, 31 corrigés
 
 - p.42 devient `Décore le sac de Pip` : écoute orale accompagnée puis décoration libre, sans réponse unique ;
 - p.45 devient `Décore les étoiles de la fête` : exposition orale `étoile / star` puis dessin libre, sans points numérotés ni modèle imposé ;
@@ -37,4 +37,4 @@ Seule la permutation p.42/p.43 est proposée :
 
 ## Recommandation
 
-**Scénario B est recommandé pour l’épreuve pédagogique**, car il ne confond pas corrigé et difficulté, crée deux vraies respirations et limite structurellement les séquences fortes à deux pages. Il exige cependant un arbitrage humain sur la perte de deux corrigés. `MAJOR-03` demeure `OPEN` jusqu’à maquette imprimée et essai enfant–adulte.
+**Scénario B est le plan documentaire retenu par décision humaine** : il ne confond pas corrigé et difficulté, crée deux vraies respirations et limite structurellement les séquences fortes à deux pages. Les 31 besoins de corrigé restent documentaires ; `MAJOR-03` demeure `OPEN` jusqu’à maquette imprimée et essai enfant–adulte.

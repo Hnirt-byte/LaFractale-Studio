@@ -172,7 +172,7 @@
     },
     {
       "path": "b3a3/00_README.md",
-      "sha256": "d74ea79b817c2f5e90d60954a9ba44e801c1e86bcdfdd48346f2b926eb7b6090"
+      "sha256": "4a4433724cb9613ed7b89e983fd0d03085c1ee8f67c2078f7220c9196f7b0239"
     },
     {
       "path": "b3a3/01_chemin_de_fer_scenario_A_56_pages.csv",
@@ -192,15 +192,19 @@
     },
     {
       "path": "b3a3/02_scenarios_progression.md",
-      "sha256": "f26e258ade9750215355f673228d35f497d2d4329d26abd5c6a51d7d723d591d"
+      "sha256": "727824afe3c3b72b564ab2424954e0c886ff523ca310be0d875bcfde337d4478"
     },
     {
-      "path": "b3a3/03_consignes_bilingues_finales_47.csv",
-      "sha256": "ac8be9a38ae03a1e3e93575150635df71791fd186978ba93cb0668cc9ae04ffe"
+      "path": "b3a3/03_consignes_bilingues_finales_46_pages_scenario_B.csv",
+      "sha256": "7be0080f8b7cd0159cd066afa1ef0b0197a0d869811a8ad5d40cb56ab6361ae2"
+    },
+    {
+      "path": "b3a3/03_consignes_bilingues_historiques_47_propositions.csv",
+      "sha256": "7683a1cc60c65fa7e7082973eb771c30641072ec595d8e808f7a041e0ae4032e"
     },
     {
       "path": "b3a3/04_consignes_bilingues_finales.md",
-      "sha256": "f88aa776372eee9b6d644ee088aeb23d12f01b5ab81bdb4e8032075fde4f1a6f"
+      "sha256": "ff8911aef73eb1bdcec0fe3c3bc3b8322bf0d9dbeb0d96369a2fca2fbc16b018"
     },
     {
       "path": "b3a3/05_harmonisation_p06_ci.md",
@@ -208,19 +212,23 @@
     },
     {
       "path": "b3a3/06_maquettes_corrigees.md",
-      "sha256": "bedb3da18b39e0ae204b69a18ee2ba2ebba84c5dfcb156bd9f04f6866a3b6dab"
+      "sha256": "fdcccc9c29bce091bb39e48281f7fd1b727911fa28de3d19b5d328a8382a1e55"
     },
     {
       "path": "b3a3/07_registre_decisions_ouvertes.md",
-      "sha256": "59517b36c476c3a3a1d735d591fe08486c27282692ddd6a8fd0851ef2d53177c"
+      "sha256": "4a8eff370c448c0ba2f7df314566479caaade321bb43ddf6e3ac182078c417cd"
     },
     {
       "path": "b3a3/08_validation_evidence.json",
-      "sha256": "749480d3c990157399dcd638f494639b0866180735e2cb19b489f5de855c72bc"
+      "sha256": "000032373586addd4c5ee39a0107e8cd4a200dc3a3514bcd14f35cbfc5571049"
     },
     {
       "path": "b3a3/09_integrity_manifest.json",
-      "sha256": "cd207890d12ab07cd6eaf94c36c6151007f1d2ee3659256d661641156719bf0d"
+      "sha256": "6a7da5acbeedee114a749c8bb8536bc23b2c676f1e2aabb90578e2015c7db486"
+    },
+    {
+      "path": "b3a3/10_controle_coherence_scenario_B.json",
+      "sha256": "2181f8c01664c41fac0515572b86044be7a936da54f3654fb33210992dff2381"
     },
     {
       "path": "b3a3/mockups/layout_geometry.json",
@@ -228,15 +236,15 @@
     },
     {
       "path": "b3a3/mockups/p55_lexique_18_paires_corrige_100pct_NON_PRODUCTION.pdf",
-      "sha256": "de2d81dae2ef42e4e150df1a4a206730c62ac6b35940d5271d5100a39d77c811"
+      "sha256": "7db85cb230f78d9b5264e745d8799e8ce884d5a58e9b98da0b4c210f2a32d948"
     },
     {
       "path": "b3a3/mockups/p56_diplome_cloture_corrige_100pct_NON_PRODUCTION.pdf",
-      "sha256": "81a2894fc933c93c73035d4efba404814380f5f6514b86b2662cb7e6c734909e"
+      "sha256": "5117bef576ccf54c2d1d237d18a39ec57b80828a3f788338d5cd97efcebdb380"
     },
     {
       "path": "b3a3/mockups/verification.json",
-      "sha256": "147ea82c0b569b0cf626529e8b45f07500a8d54e91da2c19f652e86da5ceab5f"
+      "sha256": "8872db94969b99329b085e26f360bfe5bd9bb7abcdcc3e23c64b34e85b481f8e"
     },
     {
       "path": "source_pack/00_LIRE_EN_PREMIER.md",
