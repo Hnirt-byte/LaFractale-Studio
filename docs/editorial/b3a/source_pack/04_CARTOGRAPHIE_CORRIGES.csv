@@ -1,0 +1,35 @@
+﻿page_source,titre,mecanique,page_corrige_PROPOSEE,representation_correction,note
+4,Aide Pip à trouver la sortie,maze,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+5,Qui se cache dans le jardin ?,find_count,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+6,Le croissant de lune,connect_dots,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+7,L’ombre de la citrouille,shadow_match,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+10,Compte les chauves-souris,count,51,chiffre et pictos,NON VALIDÉ — preuve de lisibilité à 100 % requise
+11,Les mots de Pip,match_vocabulary,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+12,L’indice caché,spot_differences,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+14,Le chemin des étoiles,maze,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+15,Le hibou cherche les décorations,find_count,51,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+16,La guirlande incomplète,pattern,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+17,La maison au loin,connect_dots,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+20,Retrouve les chapeaux jumeaux,match,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+21,Combien d’araignées ?,count,52,chiffre et pictos,NON VALIDÉ — preuve de lisibilité à 100 % requise
+22,La toile mystérieuse,path_logic,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+24,Le balai disparu,find_count,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+25,Pip rencontre un monstre gentil,maze,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+26,La potion des étoiles,pattern,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+27,Les chapeaux des amis,match,52,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+30,Combien d’amis ?,count,53,chiffre et pictos,NON VALIDÉ — preuve de lisibilité à 100 % requise
+31,Retrouve les objets identiques,pair_matching,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+32,Les mots des amis,match_vocabulary,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+34,Le chemin des bonbons,maze,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+35,Les bonbons cachés,find_count,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+36,La guirlande de friandises,pattern,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+37,Range les bonbons,sort,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+40,Un bonbon pour chacun,one_to_one,53,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+41,Les portes mystérieuses,shadow_match,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+42,Le sac de Pip,match_vocabulary,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+43,Les invités arrivent,maze,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+44,La grande chasse aux objets,find_count,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+45,Les étoiles de la fête,connect_dots,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+46,Qui apporte quoi ?,match,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+48,Les dernières énigmes,mini_logic,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise
+49,Je reconnais les mots,match_vocabulary,54,mini-schema lisible,NON VALIDÉ — preuve de lisibilité à 100 % requise

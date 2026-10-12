@@ -1,0 +1,61 @@
+{
+  "base_b2c4_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_b2c4_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "files": [
+    {
+      "path": "00_README.md",
+      "sha256": "0b6079d17281aab7029716257043e6f78c4b0f3997d6fcf70b49803a4f64dfbb"
+    },
+    {
+      "path": "01_registre_decisions_humaines.md",
+      "sha256": "318493012ef440cd8f4659d495b407bc4e956ae66cea7774ae01f1c11de0d3ca"
+    },
+    {
+      "path": "02_comparaison_options_corriges.md",
+      "sha256": "2fa6576516efeb5d0372a6611901abbc0da180886958bf1614fcf529529b4136"
+    },
+    {
+      "path": "03_revue_consignes_fr_en_47_activites.csv",
+      "sha256": "ad891c09bec8a75fb29f9ead1f69a71bd00e33e4ee5c02525d01bd8d2f3be9af"
+    },
+    {
+      "path": "03_revue_consignes_fr_en_47_activites.md",
+      "sha256": "f66cf58db9189841c09061da1e1044ef9c601272c58520bd59ac9950fb04076a"
+    },
+    {
+      "path": "04_verification_page06_c4.md",
+      "sha256": "200dc6733abe1367a26a2e233d5313a428a7783f5322895b586709777c530591"
+    },
+    {
+      "path": "05_inventaire_mecaniques_illustrations.md",
+      "sha256": "70f2a4ae539007f34f85e6e9615b486989fdd7908d7401b3bfac07952ebcb0ce"
+    },
+    {
+      "path": "06_lexique_p55_sans_pictogrammes.md",
+      "sha256": "8e96c2e63a41430ec666343a698c8ac177227d121def730486c65d436a134740"
+    },
+    {
+      "path": "mockups/README.md",
+      "sha256": "8e3753ad171be904f213839b3dd55c852df29b5c0beb68a53ace245a8d889a95"
+    },
+    {
+      "path": "mockups/option_4_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "sha256": "9d1359008c38d670dafb8b0ab45ac2b4ab9157bd8432217f8d5a0204753556a5"
+    },
+    {
+      "path": "mockups/option_6_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "sha256": "d2634dc05dc795fea03064e4e8b03f606d1b8c885590468fe5fb76147cc12d43"
+    },
+    {
+      "path": "mockups/verification.json",
+      "sha256": "05dd55c0bd6cd3724c9d024cb1ff9c1f70637c74f81defcde3395e3bd4a8f23e"
+    }
+  ],
+  "schema": "lafractale-b3a1-integrity-v1",
+  "status": {
+    "B3A_PLAN": "DRAFT_FOR_REVIEW",
+    "EDITORIAL": "PENDING",
+    "KDP": "FORBIDDEN",
+    "PRODUCTION_GENERATION": "FORBIDDEN"
+  }
+}

@@ -1,0 +1,360 @@
+{
+  "base_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "files": [
+    {
+      "path": "01_reconciliation_report.md",
+      "sha256": "7363915a989d3098197f3cb3b4a14b2c6c74668fc6fa85966b3c7ae91adc0942"
+    },
+    {
+      "path": "02_chemin_de_fer_consolide.csv",
+      "sha256": "d51c6895c7516148bb1dc21cd94c9184e8aa9889c19bda8faa19ab0e58009476"
+    },
+    {
+      "path": "02_chemin_de_fer_consolide.md",
+      "sha256": "f48cbdceb9f9ea4fc77fea24d3115ef69f014fed79de247f18b81cea9dd818d9"
+    },
+    {
+      "path": "03_mecanics_inventory.md",
+      "sha256": "8e9c733dc5fe8720926a068aab29c1b0355abc2de47d1d95f6b8f636b3dc81a2"
+    },
+    {
+      "path": "04_faisabilite_corriges.md",
+      "sha256": "8b18e2ab7098bc313bb4ba35e7a3f0ed9a0d7ea65c5dd010d383e7a4d3d3379c"
+    },
+    {
+      "path": "05_decisions_ouvertes.md",
+      "sha256": "22c8926636bffd36ee5e5154b058882972cf1ae2977f47b2b1fcf40b330fde50"
+    },
+    {
+      "path": "06_gates_validation.md",
+      "sha256": "bac9ba18d743187663b5ce80cdab16d605078913a6581f1c34190f7f9e787d57"
+    },
+    {
+      "path": "07_validation_evidence.json",
+      "sha256": "72a3809ac4d9e6745171343a0b510c6419a42a59599f1280734c9bc77c879110"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e2ac405eee82b052e859f4411d5fa6d234642d5e4a45e65515ab2a49648d7126"
+    },
+    {
+      "path": "audits/audit_a_structure_traceability.md",
+      "sha256": "8f789d765b48dd93571ae54e37e0cde0cf212cc1b23da5e5a1ee28c55234bd15"
+    },
+    {
+      "path": "audits/audit_b_pedagogy_bilingual_answers.md",
+      "sha256": "907d1f4a7a04fd39e503a8308f5d58c7ee3236835ebb9edfd256db98894e38d5"
+    },
+    {
+      "path": "b3a1/00_README.md",
+      "sha256": "0b6079d17281aab7029716257043e6f78c4b0f3997d6fcf70b49803a4f64dfbb"
+    },
+    {
+      "path": "b3a1/01_registre_decisions_humaines.md",
+      "sha256": "318493012ef440cd8f4659d495b407bc4e956ae66cea7774ae01f1c11de0d3ca"
+    },
+    {
+      "path": "b3a1/02_comparaison_options_corriges.md",
+      "sha256": "2fa6576516efeb5d0372a6611901abbc0da180886958bf1614fcf529529b4136"
+    },
+    {
+      "path": "b3a1/03_revue_consignes_fr_en_47_activites.csv",
+      "sha256": "ad891c09bec8a75fb29f9ead1f69a71bd00e33e4ee5c02525d01bd8d2f3be9af"
+    },
+    {
+      "path": "b3a1/03_revue_consignes_fr_en_47_activites.md",
+      "sha256": "f66cf58db9189841c09061da1e1044ef9c601272c58520bd59ac9950fb04076a"
+    },
+    {
+      "path": "b3a1/04_verification_page06_c4.md",
+      "sha256": "200dc6733abe1367a26a2e233d5313a428a7783f5322895b586709777c530591"
+    },
+    {
+      "path": "b3a1/05_inventaire_mecaniques_illustrations.md",
+      "sha256": "70f2a4ae539007f34f85e6e9615b486989fdd7908d7401b3bfac07952ebcb0ce"
+    },
+    {
+      "path": "b3a1/06_lexique_p55_sans_pictogrammes.md",
+      "sha256": "8e96c2e63a41430ec666343a698c8ac177227d121def730486c65d436a134740"
+    },
+    {
+      "path": "b3a1/08_integrity_manifest.json",
+      "sha256": "71b658c3abc3e2a4fab16e505eb7328e52925ee35d1998d6c5c5575b406e881f"
+    },
+    {
+      "path": "b3a1/mockups/README.md",
+      "sha256": "8e3753ad171be904f213839b3dd55c852df29b5c0beb68a53ace245a8d889a95"
+    },
+    {
+      "path": "b3a1/mockups/option_4_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "sha256": "9d1359008c38d670dafb8b0ab45ac2b4ab9157bd8432217f8d5a0204753556a5"
+    },
+    {
+      "path": "b3a1/mockups/option_6_pages_corriges_100pct_NON_PRODUCTION.pdf",
+      "sha256": "d2634dc05dc795fea03064e4e8b03f606d1b8c885590468fe5fb76147cc12d43"
+    },
+    {
+      "path": "b3a1/mockups/verification.json",
+      "sha256": "05dd55c0bd6cd3724c9d024cb1ff9c1f70637c74f81defcde3395e3bd4a8f23e"
+    },
+    {
+      "path": "b3a2/.gitattributes",
+      "sha256": "5407a9bdab58eb6bd75c2d2df6c0f9a081747e87c7db490d880b8c701fe42181"
+    },
+    {
+      "path": "b3a2/00_README.md",
+      "sha256": "305561dfaf99492a15d84ac7f8c370d31149b9544c1c6b16f96e812470499379"
+    },
+    {
+      "path": "b3a2/01_chemin_de_fer_version_A_56_pages.csv",
+      "sha256": "050c93d45276425e8e3abb0a9caf20fcff509cd09a99e5812a17b598f200c35a"
+    },
+    {
+      "path": "b3a2/01_chemin_de_fer_version_B_56_pages.csv",
+      "sha256": "1e7a8d05118b06cc4f7a148b80752a06560a5abbbd7cb695d3796fd2cb164996"
+    },
+    {
+      "path": "b3a2/01_correspondance_ancienne_vers_nouvelle_version_A.csv",
+      "sha256": "48f1e1ea50cfa5970b744feead11bfde7e50e65bb4b64a8a469ae03979348df1"
+    },
+    {
+      "path": "b3a2/01_correspondance_ancienne_vers_nouvelle_version_B.csv",
+      "sha256": "f657558e01ee4c8d422b2441632c73ef452a8405cc43f02fc8e376374d166595"
+    },
+    {
+      "path": "b3a2/02_comparatif_versions.md",
+      "sha256": "b09a06bfb411555d228d51fc7f5f12e64d1cfa05101a4ae7eb44808034c28155"
+    },
+    {
+      "path": "b3a2/02_progression_difficultes_p40_p48.csv",
+      "sha256": "e5d283dbff921513f373a692f02790939bfb8092daa9242b782b69bad45503ca"
+    },
+    {
+      "path": "b3a2/03_controle_corriges_conserves.csv",
+      "sha256": "474dec45a76b74e3358e679f3db60590aa3366c9b694309af41395c1a6ccd762"
+    },
+    {
+      "path": "b3a2/04_verification_c4_ci.md",
+      "sha256": "32b36c71ec5148b6c072e63358d5f918872080afd5469cb453ccb69341fa85b3"
+    },
+    {
+      "path": "b3a2/05_lexique_p55_lisibilite.md",
+      "sha256": "6c26ec0e1988d665a981eea35d6755ad5cf3ceac3a36261dd2264f464a128d47"
+    },
+    {
+      "path": "b3a2/06_maquette_p56_diplome_cloture.md",
+      "sha256": "69c465991d2759cc34137e1c1b06b268067610cd2a9f8e868a6ef687f7e07f2c"
+    },
+    {
+      "path": "b3a2/07_validation_evidence.json",
+      "sha256": "777b8dfd7596f3f7fa605485f2ea695668f5b89a3d6d072d4b44df8d255fba05"
+    },
+    {
+      "path": "b3a2/08_integrity_manifest.json",
+      "sha256": "61d2363568807264327cb6f1e55e74e4b11b3454cee3eb0827faba9d831ac706"
+    },
+    {
+      "path": "b3a2/mockups/p55_lexique_18_paires_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3748883efe3ad1b77f8f29188e8a823c8bbc1a73d011ed849e21ee7e0580ec09"
+    },
+    {
+      "path": "b3a2/mockups/p56_diplome_cloture_100pct_NON_PRODUCTION.pdf",
+      "sha256": "3b7e8ae05c2e17f93d6da82949a610445bac672fd076c19b55043933a4ab60d3"
+    },
+    {
+      "path": "b3a2/mockups/verification.json",
+      "sha256": "09165e34195c9dd6dfc932eac8b4a7dbb3a560c3d79a001a440f4f5bbcebd3df"
+    },
+    {
+      "path": "b3a3/.gitattributes",
+      "sha256": "5407a9bdab58eb6bd75c2d2df6c0f9a081747e87c7db490d880b8c701fe42181"
+    },
+    {
+      "path": "b3a3/00_README.md",
+      "sha256": "4a4433724cb9613ed7b89e983fd0d03085c1ee8f67c2078f7220c9196f7b0239"
+    },
+    {
+      "path": "b3a3/01_chemin_de_fer_scenario_A_56_pages.csv",
+      "sha256": "24901f9d68e62e4246df167255336d310266137db1870573fc8d61efeddbefb5"
+    },
+    {
+      "path": "b3a3/01_chemin_de_fer_scenario_B_56_pages.csv",
+      "sha256": "2da1e37505ca7357ad77e31c1431dfcacc7e0fe4fc7254c4a72158f327b23d46"
+    },
+    {
+      "path": "b3a3/02_controle_corriges_scenarios.csv",
+      "sha256": "c432d3a9324a304f36752216ced0eea451b7e2a1053da214aacfb3b70c5307fb"
+    },
+    {
+      "path": "b3a3/02_progression_p40_p48.csv",
+      "sha256": "a2698a0d6c72584cd695948e5102a49e5dbccd3fde1bc15c735fcc2e1334cee2"
+    },
+    {
+      "path": "b3a3/02_scenarios_progression.md",
+      "sha256": "727824afe3c3b72b564ab2424954e0c886ff523ca310be0d875bcfde337d4478"
+    },
+    {
+      "path": "b3a3/03_consignes_bilingues_finales_46_pages_scenario_B.csv",
+      "sha256": "7be0080f8b7cd0159cd066afa1ef0b0197a0d869811a8ad5d40cb56ab6361ae2"
+    },
+    {
+      "path": "b3a3/03_consignes_bilingues_historiques_47_propositions.csv",
+      "sha256": "7683a1cc60c65fa7e7082973eb771c30641072ec595d8e808f7a041e0ae4032e"
+    },
+    {
+      "path": "b3a3/04_consignes_bilingues_finales.md",
+      "sha256": "ff8911aef73eb1bdcec0fe3c3bc3b8322bf0d9dbeb0d96369a2fca2fbc16b018"
+    },
+    {
+      "path": "b3a3/05_harmonisation_p06_ci.md",
+      "sha256": "978b6ca21b56d2bf97fda60de39fbe6a7c19657cdbd2af325cf2eb2c1e946168"
+    },
+    {
+      "path": "b3a3/06_maquettes_corrigees.md",
+      "sha256": "fdcccc9c29bce091bb39e48281f7fd1b727911fa28de3d19b5d328a8382a1e55"
+    },
+    {
+      "path": "b3a3/07_registre_decisions_ouvertes.md",
+      "sha256": "4a8eff370c448c0ba2f7df314566479caaade321bb43ddf6e3ac182078c417cd"
+    },
+    {
+      "path": "b3a3/08_validation_evidence.json",
+      "sha256": "000032373586addd4c5ee39a0107e8cd4a200dc3a3514bcd14f35cbfc5571049"
+    },
+    {
+      "path": "b3a3/09_integrity_manifest.json",
+      "sha256": "6a7da5acbeedee114a749c8bb8536bc23b2c676f1e2aabb90578e2015c7db486"
+    },
+    {
+      "path": "b3a3/10_controle_coherence_scenario_B.json",
+      "sha256": "2181f8c01664c41fac0515572b86044be7a936da54f3654fb33210992dff2381"
+    },
+    {
+      "path": "b3a3/mockups/layout_geometry.json",
+      "sha256": "2fd7a57abb78a06aca62a7ff7f67b2a76b2bc22629405b4202e0cc0020022a0c"
+    },
+    {
+      "path": "b3a3/mockups/p55_lexique_18_paires_corrige_100pct_NON_PRODUCTION.pdf",
+      "sha256": "7db85cb230f78d9b5264e745d8799e8ce884d5a58e9b98da0b4c210f2a32d948"
+    },
+    {
+      "path": "b3a3/mockups/p56_diplome_cloture_corrige_100pct_NON_PRODUCTION.pdf",
+      "sha256": "5117bef576ccf54c2d1d237d18a39ec57b80828a3f788338d5cd97efcebdb380"
+    },
+    {
+      "path": "b3a3/mockups/verification.json",
+      "sha256": "8872db94969b99329b085e26f360bfe5bd9bb7abcdcc3e23c64b34e85b481f8e"
+    },
+    {
+      "path": "b3a4/00_README.md",
+      "sha256": "8dc76ad44d75139513491a21547ee4dc6357b341b52f4d887696c239d36e39b8"
+    },
+    {
+      "path": "b3a4/01_cloture_b3a3_et_strategie_git.md",
+      "sha256": "688b1ac184a21ee48281160751915c9d166bcc805ca9fcae76afb3240729258e"
+    },
+    {
+      "path": "b3a4/02_grille_relecture_humaine_complete.csv",
+      "sha256": "45b12c7112a75289144d312c06229f663b1257b895edb2ae55efaa3cd1274f5d"
+    },
+    {
+      "path": "b3a4/03_archive_historique_47_reference.csv",
+      "sha256": "b044b5328b848eae86a1115aaf2c7ba8720bd9c26a2befc9157a5d7b27f35038"
+    },
+    {
+      "path": "b3a4/03_guide_relecture_bilingue.md",
+      "sha256": "33640ee7a0bbc62800f84a3414cc0d8d595b1ae12c78350e7697544ddffdf749"
+    },
+    {
+      "path": "b3a4/04_protocole_epreuve_enfant_adulte.md",
+      "sha256": "7a53e0302e2142f5ef1a6917f880ebaa07793a5f85b5393f2f15bdb1ba3db907"
+    },
+    {
+      "path": "b3a4/05_feuille_route_technique_b3b.md",
+      "sha256": "d5a909683f9aa424eeb95695c211af7ae39b2e39c74c887bf615a67a86b0e0d3"
+    },
+    {
+      "path": "b3a4/06_plan_livraison_drive_prive.md",
+      "sha256": "1d032a6e909fd24273b5b7f01092ecfb7f148b05772743c8cf1fa6cc21735f52"
+    },
+    {
+      "path": "b3a4/07_contradictions_et_decisions_humaines.md",
+      "sha256": "71cdeb0aa2afa1a4b597152d27fcc27e67d97f0a5a5dd5529e72f65e03621741"
+    },
+    {
+      "path": "b3a4/08_validation_evidence.json",
+      "sha256": "b68f67477fe5b71564cc18b8555391e455895c4e4931ca6355497c4de331f143"
+    },
+    {
+      "path": "b3a4/09_integrity_manifest.json",
+      "sha256": "400b9a4892b2163e65855198a8bebe06e820ae1d001b7aabba089edf6dec4587"
+    },
+    {
+      "path": "source_pack/00_LIRE_EN_PREMIER.md",
+      "sha256": "f4a372f46233d403d26fdb4ad6a07de8dbe8a52c00542b5e0c94477fb040f846"
+    },
+    {
+      "path": "source_pack/01_CONTRAT_B3A_v1.0.md",
+      "sha256": "956306f7223ab42776940b4ac583158dc3dc253dd8fd37d2a936149cb534169e"
+    },
+    {
+      "path": "source_pack/02_CHEMIN_DE_FER_56_PAGES.csv",
+      "sha256": "c4a08162c708c8427aa1261bf3a2da06675051bbe3dfef7c2ce8fdebadbc563e"
+    },
+    {
+      "path": "source_pack/02_CHEMIN_DE_FER_56_PAGES.xlsx",
+      "sha256": "85fb903e27ea26299405a6348346673afdac768cff3e8d93a143ac5f8f18f1ef"
+    },
+    {
+      "path": "source_pack/03_CHEMIN_DE_FER_LISIBLE.md",
+      "sha256": "d3342c639abc31decefd7f952dd6f0d42657a9ab00667c0ba788a667d5ad070c"
+    },
+    {
+      "path": "source_pack/04_CARTOGRAPHIE_CORRIGES.csv",
+      "sha256": "fc53fc8d28628bd734a3a087d36d268a6cb9aaf64c86fccdcaa5ee222ac926be"
+    },
+    {
+      "path": "source_pack/05_BIBLE_ET_PROGRESSION.md",
+      "sha256": "2982b5be2f1ca41468140079ac09bef96fa55837966d4e42fc6026d1ccce7faa"
+    },
+    {
+      "path": "source_pack/06_GATES_RECETTE.md",
+      "sha256": "3c32265f2ffb882594f31f6593f5046dbaa5d87bb0edef06ae30c1fc77a59d9b"
+    },
+    {
+      "path": "source_pack/07_PROMPT_HERMES.md",
+      "sha256": "9cf945e290668ffd3f3c0727230ea66fd564206f31cdeb46ea626c603e64c18e"
+    },
+    {
+      "path": "source_pack/08_PROVENANCE_SOURCES.json",
+      "sha256": "aa0bf9ec3373a4bc7f77abc5d8f66f735368b98abd2a7fe2fbabb349d98e0f07"
+    },
+    {
+      "path": "source_pack/09_REFERENCES_KDP.md",
+      "sha256": "c9591635711b9d269548f6e3ef18aa26532dce58d9449d4fd52adce4301505df"
+    },
+    {
+      "path": "source_pack/10_CONTROLE_QUALITE_PACK.md",
+      "sha256": "2438ccafa5f37c47a369c7f9c6c0fce6caa8105da70bd5f091abe49750890ca8"
+    },
+    {
+      "path": "source_pack/11_MANIFEST_SHA256.json",
+      "sha256": "5e10ea6dc2c4982272e168d8f528aec4a2cada5c97c9bc5f4d290c01641f3214"
+    }
+  ],
+  "notes": [
+    "B3-A.3 adds two progression scenarios, final bilingual proposals and corrected NON PRODUCTION mockups. Historical source_pack/ p06 wording is provenance only; active p06 is canonical C4.",
+    "B3-A.4 adds a human-validation preparation grid, child-adult trial protocol, B3-B roadmap and private Drive delivery study. It does not authorize production, Drive export, B3-B implementation, prepress or KDP."
+  ],
+  "schema": "lafractale-b3a-integrity-v4",
+  "status": {
+    "B3A_PLAN": "DRAFT_FOR_REVIEW",
+    "EDITORIAL": "PENDING",
+    "KDP": "FORBIDDEN",
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN",
+    "PRODUCTION_GENERATION": "FORBIDDEN",
+    "PR_10": "OPEN_NOT_MERGED"
+  }
+}

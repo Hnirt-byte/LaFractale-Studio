@@ -1,0 +1,484 @@
+{
+  "active_activity_pages": 46,
+  "active_b_rows": [
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color Pip and his invitation.",
+      "final_page": "3",
+      "fr": "Colorie Pip et son invitation.",
+      "source_historical_page": "3",
+      "title": "Pip reçoit une invitation",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "Find a path through the maze with Pip!",
+      "final_page": "4",
+      "fr": "Traverse le labyrinthe avec Pip !",
+      "source_historical_page": "4",
+      "title": "Aide Pip à trouver la sortie",
+      "type": "maze"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "Find and count the cats and bats.",
+      "final_page": "5",
+      "fr": "Trouve et compte les chats et les chauves-souris.",
+      "source_historical_page": "5",
+      "title": "Qui se cache dans le jardin ?",
+      "type": "find_count"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "Connect the dots from 1 to 8, then back to 1.",
+      "final_page": "6",
+      "fr": "Relie les points de 1 à 8, puis reviens au 1.",
+      "source_historical_page": "6",
+      "title": "La lune mystérieuse",
+      "type": "connect_dots"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "Match each pumpkin to its shadow.",
+      "final_page": "7",
+      "fr": "Relie chaque citrouille à son ombre.",
+      "source_historical_page": "7",
+      "title": "L’ombre de la citrouille",
+      "type": "shadow_match"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Draw stars around the invitation.",
+      "final_page": "8",
+      "fr": "Dessine des étoiles autour de l’invitation.",
+      "source_historical_page": "8",
+      "title": "Décore l’invitation",
+      "type": "creative_color"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Trace the dotted paths.",
+      "final_page": "9",
+      "fr": "Repasse les chemins pointillés.",
+      "source_historical_page": "9",
+      "title": "Les chemins de Pip",
+      "type": "trace_paths"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "Count the bats.",
+      "final_page": "10",
+      "fr": "Compte les chauves-souris.",
+      "source_historical_page": "10",
+      "title": "Compte les chauves-souris",
+      "type": "count"
+    },
+    {
+      "answer_page": "49",
+      "correction_status": "",
+      "en": "With a grown-up, listen to the words, then match each word to the right picture.",
+      "final_page": "11",
+      "fr": "Avec un adulte, écoute les mots, puis relie chaque mot au bon dessin.",
+      "source_historical_page": "11",
+      "title": "Les mots de Pip",
+      "type": "match_vocabulary"
+    },
+    {
+      "answer_page": "50",
+      "correction_status": "",
+      "en": "Find three differences.",
+      "final_page": "12",
+      "fr": "Trouve les trois différences.",
+      "source_historical_page": "12",
+      "title": "L’indice caché",
+      "type": "spot_differences"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the forest and the starry sky.",
+      "final_page": "13",
+      "fr": "Colorie la forêt et le ciel étoilé.",
+      "source_historical_page": "13",
+      "title": "La forêt douce de la nuit",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "50",
+      "correction_status": "",
+      "en": "Follow the stars to reach Pip.",
+      "final_page": "14",
+      "fr": "Suis les étoiles pour rejoindre Pip.",
+      "source_historical_page": "14",
+      "title": "Le chemin des étoiles",
+      "type": "maze"
+    },
+    {
+      "answer_page": "50",
+      "correction_status": "",
+      "en": "Help the owl find four decorations.",
+      "final_page": "15",
+      "fr": "Aide le hibou à trouver quatre décorations.",
+      "source_historical_page": "15",
+      "title": "Le hibou cherche les décorations",
+      "type": "find_count"
+    },
+    {
+      "answer_page": "50",
+      "correction_status": "",
+      "en": "Look at the pattern, then draw the missing picture.",
+      "final_page": "16",
+      "fr": "Regarde la suite, puis dessine l’image qui manque.",
+      "source_historical_page": "16",
+      "title": "La guirlande incomplète",
+      "type": "pattern"
+    },
+    {
+      "answer_page": "50",
+      "correction_status": "",
+      "en": "Connect the dots in order to reveal the house.",
+      "final_page": "17",
+      "fr": "Relie les points dans l’ordre pour découvrir la maison.",
+      "source_historical_page": "17",
+      "title": "La maison au loin",
+      "type": "connect_dots"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the cat and its hat.",
+      "final_page": "18",
+      "fr": "Colorie le chat et son chapeau.",
+      "source_historical_page": "18",
+      "title": "Le chat au grand chapeau",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Trace the broom paths.",
+      "final_page": "19",
+      "fr": "Repasse les chemins du balai.",
+      "source_historical_page": "19",
+      "title": "Les traces du balai",
+      "type": "trace_paths"
+    },
+    {
+      "answer_page": "51",
+      "correction_status": "",
+      "en": "Match each hat to its twin.",
+      "final_page": "20",
+      "fr": "Relie chaque chapeau à son jumeau.",
+      "source_historical_page": "20",
+      "title": "Retrouve les chapeaux jumeaux",
+      "type": "match"
+    },
+    {
+      "answer_page": "51",
+      "correction_status": "",
+      "en": "Count the spiders.",
+      "final_page": "21",
+      "fr": "Compte les araignées.",
+      "source_historical_page": "21",
+      "title": "Combien d’araignées ?",
+      "type": "count"
+    },
+    {
+      "answer_page": "51",
+      "correction_status": "",
+      "en": "Follow the path to the spiderweb without crossing the other paths.",
+      "final_page": "22",
+      "fr": "Suis le chemin qui mène à la toile sans croiser les autres chemins.",
+      "source_historical_page": "22",
+      "title": "La toile mystérieuse",
+      "type": "path_logic"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the friendly witch and her house.",
+      "final_page": "23",
+      "fr": "Colorie la gentille sorcière et sa maison.",
+      "source_historical_page": "23",
+      "title": "La gentille sorcière",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "51",
+      "correction_status": "",
+      "en": "Find the four hidden brooms.",
+      "final_page": "24",
+      "fr": "Trouve les quatre balais cachés.",
+      "source_historical_page": "24",
+      "title": "Le balai disparu",
+      "type": "find_count"
+    },
+    {
+      "answer_page": "51",
+      "correction_status": "",
+      "en": "Guide Pip to his new friend.",
+      "final_page": "25",
+      "fr": "Guide Pip vers son nouvel ami.",
+      "source_historical_page": "25",
+      "title": "Pip rencontre un monstre gentil",
+      "type": "maze"
+    },
+    {
+      "answer_page": "52",
+      "correction_status": "",
+      "en": "Continue the star and bubble pattern.",
+      "final_page": "26",
+      "fr": "Continue la suite des étoiles et des bulles.",
+      "source_historical_page": "26",
+      "title": "La potion des étoiles",
+      "type": "pattern"
+    },
+    {
+      "answer_page": "52",
+      "correction_status": "",
+      "en": "Match each friend to their hat.",
+      "final_page": "27",
+      "fr": "Relie chaque ami à son chapeau.",
+      "source_historical_page": "27",
+      "title": "Les chapeaux des amis",
+      "type": "match"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the friendly monster any way you like.",
+      "final_page": "28",
+      "fr": "Colorie le monstre gentil comme tu veux.",
+      "source_historical_page": "28",
+      "title": "Le monstre souriant",
+      "type": "creative_color"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Trace each invitation path.",
+      "final_page": "29",
+      "fr": "Trace le chemin de chaque invitation.",
+      "source_historical_page": "29",
+      "title": "Les invitations des amis",
+      "type": "trace_paths"
+    },
+    {
+      "answer_page": "52",
+      "correction_status": "",
+      "en": "Count each group of friends.",
+      "final_page": "30",
+      "fr": "Compte chaque groupe d’amis.",
+      "source_historical_page": "30",
+      "title": "Combien d’amis ?",
+      "type": "count"
+    },
+    {
+      "answer_page": "52",
+      "correction_status": "",
+      "en": "Circle each pair of identical objects.",
+      "final_page": "31",
+      "fr": "Entoure chaque paire d’objets identiques.",
+      "source_historical_page": "31",
+      "title": "Retrouve les objets identiques",
+      "type": "pair_matching"
+    },
+    {
+      "answer_page": "52",
+      "correction_status": "",
+      "en": "With a grown-up, listen to each word, then match it to the right picture.",
+      "final_page": "32",
+      "fr": "Avec un adulte, écoute chaque mot, puis relie-le au bon dessin.",
+      "source_historical_page": "32",
+      "title": "Les mots des amis",
+      "type": "match_vocabulary"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the bag and the candies.",
+      "final_page": "33",
+      "fr": "Colorie le sac et les bonbons.",
+      "source_historical_page": "33",
+      "title": "Le sac magique de Pip",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "53",
+      "correction_status": "",
+      "en": "Lead Pip to the candies.",
+      "final_page": "34",
+      "fr": "Conduis Pip jusqu’aux bonbons.",
+      "source_historical_page": "34",
+      "title": "Le chemin des bonbons",
+      "type": "maze"
+    },
+    {
+      "answer_page": "53",
+      "correction_status": "",
+      "en": "Find five candies in the picture.",
+      "final_page": "35",
+      "fr": "Trouve cinq bonbons dans l’image.",
+      "source_historical_page": "35",
+      "title": "Les bonbons cachés",
+      "type": "find_count"
+    },
+    {
+      "answer_page": "53",
+      "correction_status": "",
+      "en": "Continue the candy pattern.",
+      "final_page": "36",
+      "fr": "Continue la suite de bonbons.",
+      "source_historical_page": "36",
+      "title": "La guirlande de friandises",
+      "type": "pattern"
+    },
+    {
+      "answer_page": "53",
+      "correction_status": "",
+      "en": "Sort the candies into the right bags.",
+      "final_page": "37",
+      "fr": "Range les bonbons dans les bons sacs.",
+      "source_historical_page": "37",
+      "title": "Range les bonbons",
+      "type": "sort"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Trace Pip’s path to the house.",
+      "final_page": "38",
+      "fr": "Trace le chemin de Pip jusqu’à la maison.",
+      "source_historical_page": "38",
+      "title": "Pip rentre à la maison",
+      "type": "trace_paths"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "",
+      "en": "Color the party door.",
+      "final_page": "39",
+      "fr": "Colorie la porte de la fête.",
+      "source_historical_page": "39",
+      "title": "La porte décorée",
+      "type": "coloring"
+    },
+    {
+      "answer_page": "53",
+      "correction_status": "graphique",
+      "en": "Match each friend to one candy.",
+      "final_page": "40",
+      "fr": "Relie chaque ami à un bonbon.",
+      "source_historical_page": "40",
+      "title": "Un bonbon pour chacun",
+      "type": "one_to_one"
+    },
+    {
+      "answer_page": "54",
+      "correction_status": "graphique",
+      "en": "Match each door to its shadow.",
+      "final_page": "41",
+      "fr": "Relie chaque porte à son ombre.",
+      "source_historical_page": "41",
+      "title": "Les portes mystérieuses",
+      "type": "shadow_match"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "libre",
+      "en": "With a grown-up, listen to the words “bag, candy, door”, then decorate Pip’s bag your way.",
+      "final_page": "42",
+      "fr": "Avec un adulte, écoute les mots « sac, bonbon, porte », puis décore le sac de Pip à ta façon.",
+      "source_historical_page": "42",
+      "title": "Décore le sac de Pip",
+      "type": "creative_color"
+    },
+    {
+      "answer_page": "54",
+      "correction_status": "graphique",
+      "en": "Help the guests find the path to the party.",
+      "final_page": "43",
+      "fr": "Aide les invités à trouver le chemin de la fête.",
+      "source_historical_page": "43",
+      "title": "Les invités arrivent",
+      "type": "maze"
+    },
+    {
+      "answer_page": "54",
+      "correction_status": "graphique",
+      "en": "Find six objects from the adventure.",
+      "final_page": "44",
+      "fr": "Retrouve six objets vus dans l’aventure.",
+      "source_historical_page": "44",
+      "title": "La grande chasse aux objets",
+      "type": "find_count"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "libre",
+      "en": "With a grown-up, say “étoile / star”, then draw stars for the party your way.",
+      "final_page": "45",
+      "fr": "Avec un adulte, dis « étoile / star », puis dessine des étoiles pour la fête à ta façon.",
+      "source_historical_page": "45",
+      "title": "Décore les étoiles de la fête",
+      "type": "creative_color"
+    },
+    {
+      "answer_page": "54",
+      "correction_status": "graphique",
+      "en": "Match each guest to their item.",
+      "final_page": "46",
+      "fr": "Relie chaque invité à son objet.",
+      "source_historical_page": "46",
+      "title": "Qui apporte quoi ?",
+      "type": "match"
+    },
+    {
+      "answer_page": "",
+      "correction_status": "libre",
+      "en": "Draw Pip’s party your way.",
+      "final_page": "47",
+      "fr": "Dessine la fête de Pip à ta façon.",
+      "source_historical_page": "47",
+      "title": "La fête de mes rêves",
+      "type": "creative_color"
+    },
+    {
+      "answer_page": "54",
+      "correction_status": "graphique",
+      "en": "With a grown-up, listen to the words, then match each word to its picture.",
+      "final_page": "48",
+      "fr": "Avec un adulte, écoute les mots, puis relie chaque mot à son image.",
+      "source_historical_page": "49",
+      "title": "Je reconnais les mots",
+      "type": "match_vocabulary"
+    }
+  ],
+  "authoritative_plan": "01_chemin_de_fer_scenario_B_56_pages.csv",
+  "comparison_only_plan": "01_chemin_de_fer_scenario_A_56_pages.csv",
+  "historical_proposals": 47,
+  "moved_historical_page": {
+    "final": 48,
+    "source": 49
+  },
+  "removed_historical_page": 48,
+  "scenario_a_comparison_only": {
+    "page_42_en": "Help the guests find the path to the party.",
+    "page_42_fr": "Aide les invités à trouver le chemin de la fête.",
+    "page_42_source": "43",
+    "page_42_title": "Les invités arrivent",
+    "page_43_en": "With a grown-up, listen to each word, then point to the right picture.",
+    "page_43_fr": "Avec un adulte, écoute chaque mot, puis montre le bon dessin.",
+    "page_43_source": "42",
+    "page_43_title": "Le sac de Pip"
+  },
+  "schema": "lafractale-b3a3-pagination-coherence-v1"
+}

@@ -1,0 +1,19 @@
+scenario,final_page,source_old_pages,final_title,final_type,correction_status,demand_level,demand_profile,objective,notes
+A,40,40,Un bonbon pour chacun,one_to_one,graphique,HIGH,"V moyenne, M moyenne à forte (liaisons 1:1), fatigue moyenne",Correspondance terme à terme 1–5,
+A,41,41,Les portes mystérieuses,shadow_match,graphique,MODERATE,"V moyenne (silhouettes), M faible à moyenne, fatigue limitée si paires distinctes",Associer silhouettes de portes,
+A,42,43,Les invités arrivent,maze,graphique,HIGH,V forte et M forte (labyrinthe) si scénario A ; respiration si B,Réinvestir dans un labyrinthe final,C4 inchangé ; contenu déplacé sans suppression.
+A,43,42,Le sac de Pip,match_vocabulary,graphique,LOW,"O accompagnée, M faible, V faible à moyenne si scénario A ; labyrinthe V/M fortes si B",Revoir bag/candy/door,C4 inchangé ; contenu déplacé sans suppression.
+A,44,44,La grande chasse aux objets,find_count,graphique,HIGH,"V forte (six cibles), M faible ; D3 facultatif mais charge visuelle/fatigue élevées",Rechercher 6 objets de thèmes déjà vus,
+A,45,45,Les étoiles de la fête,connect_dots,graphique,HIGH,M forte et ordre numéroté pour étoile à sept points ; fatigue moyenne à forte,Relier 7 points pour une étoile complète,
+A,46,46,Qui apporte quoi ?,match,graphique,HIGH,"V forte (indices narratifs), M moyenne (liaisons), O moyenne, fatigue forte",Associer 4 invités à 4 objets,
+A,47,47,La fête de mes rêves,creative_color,libre,LOW,"Création libre : V faible, M autorégulée, aucune réponse attendue",Exprimer sa créativité après exercices,
+A,48,49,Je reconnais les mots,match_vocabulary,graphique,MODERATE,"V moyenne, O forte ; vocabulaire lu par adulte, pas de lecture autonome",Réviser 5–6 mots déjà rencontrés,
+B,40,40,Un bonbon pour chacun,one_to_one,graphique,HIGH,"V moyenne, M moyenne à forte (liaisons 1:1), fatigue moyenne",Correspondance terme à terme 1–5,
+B,41,41,Les portes mystérieuses,shadow_match,graphique,MODERATE,"V moyenne (silhouettes), M faible à moyenne, fatigue limitée si paires distinctes",Associer silhouettes de portes,
+B,42,42,Décore le sac de Pip,creative_color,libre,LOW,"respiration créative : V faible, M libre, O accompagnée non évaluative, fatigue faible",Écouter des mots avec un adulte puis décorer librement le sac ; aucune réponse attendue.,Perte du corrigé vocabulaire fermé ; exposition orale sac / bonbon / porte conservée sans évaluation.
+B,43,43,Les invités arrivent,maze,graphique,HIGH,"O accompagnée, M faible, V faible à moyenne si scénario A ; labyrinthe V/M fortes si B",Réinvestir dans un labyrinthe final,
+B,44,44,La grande chasse aux objets,find_count,graphique,HIGH,"V forte (six cibles), M faible ; D3 facultatif mais charge visuelle/fatigue élevées",Rechercher 6 objets de thèmes déjà vus,
+B,45,45,Décore les étoiles de la fête,creative_color,libre,LOW,"respiration créative : V faible, M libre, O facultative, fatigue faible",Nommer étoile / star avec un adulte puis dessiner ou décorer librement de grandes étoiles.,Perte du corrigé du tracé à sept points ; exposition étoile / star conservée sans modèle imposé.
+B,46,46,Qui apporte quoi ?,match,graphique,HIGH,"V forte (indices narratifs), M moyenne (liaisons), O moyenne, fatigue forte",Associer 4 invités à 4 objets,
+B,47,47,La fête de mes rêves,creative_color,libre,LOW,"Création libre : V faible, M autorégulée, aucune réponse attendue",Exprimer sa créativité après exercices,
+B,48,49,Je reconnais les mots,match_vocabulary,graphique,MODERATE,"V moyenne, O forte ; vocabulaire lu par adulte, pas de lecture autonome",Réviser 5–6 mots déjà rencontrés,

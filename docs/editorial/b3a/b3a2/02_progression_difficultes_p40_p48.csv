@@ -1,0 +1,19 @@
+version,final_page,old_page,title,level,correction,task_kind,closed
+A,40,40,Un bonbon pour chacun,2,graphique,fermée / potentiellement exigeante,True
+A,41,41,Les portes mystérieuses,2,graphique,fermée / potentiellement exigeante,True
+A,42,42,Le sac de Pip,2,graphique,fermée / potentiellement exigeante,True
+A,43,43,Les invités arrivent,2,graphique,fermée / potentiellement exigeante,True
+A,44,44,La grande chasse aux objets,3,graphique,fermée / potentiellement exigeante,True
+A,45,45,Les étoiles de la fête,2,graphique,fermée / potentiellement exigeante,True
+A,46,46,Qui apporte quoi ?,2,graphique,fermée / potentiellement exigeante,True
+A,47,48,Les dernières énigmes,3,graphique,fermée / potentiellement exigeante,True
+A,48,49,Je reconnais les mots,2,graphique,fermée / potentiellement exigeante,True
+B,40,40,Un bonbon pour chacun,2,graphique,fermée / potentiellement exigeante,True
+B,41,41,Les portes mystérieuses,2,graphique,fermée / potentiellement exigeante,True
+B,42,42,Le sac de Pip,2,graphique,fermée / potentiellement exigeante,True
+B,43,43,Les invités arrivent,2,graphique,fermée / potentiellement exigeante,True
+B,44,44,La grande chasse aux objets,3,graphique,fermée / potentiellement exigeante,True
+B,45,45,Les étoiles de la fête,2,graphique,fermée / potentiellement exigeante,True
+B,46,46,Qui apporte quoi ?,2,graphique,fermée / potentiellement exigeante,True
+B,47,47,La fête de mes rêves,1,libre,libre / respiration,False
+B,48,49,Je reconnais les mots,2,graphique,fermée / potentiellement exigeante,True

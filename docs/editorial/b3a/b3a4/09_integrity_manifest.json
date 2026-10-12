@@ -1,0 +1,45 @@
+{
+  "schema": "lafractale-b3a4-integrity-v1",
+  "records": [
+    {
+      "path": "00_README.md",
+      "sha256": "8dc76ad44d75139513491a21547ee4dc6357b341b52f4d887696c239d36e39b8"
+    },
+    {
+      "path": "01_cloture_b3a3_et_strategie_git.md",
+      "sha256": "688b1ac184a21ee48281160751915c9d166bcc805ca9fcae76afb3240729258e"
+    },
+    {
+      "path": "02_grille_relecture_humaine_complete.csv",
+      "sha256": "45b12c7112a75289144d312c06229f663b1257b895edb2ae55efaa3cd1274f5d"
+    },
+    {
+      "path": "03_archive_historique_47_reference.csv",
+      "sha256": "b044b5328b848eae86a1115aaf2c7ba8720bd9c26a2befc9157a5d7b27f35038"
+    },
+    {
+      "path": "03_guide_relecture_bilingue.md",
+      "sha256": "33640ee7a0bbc62800f84a3414cc0d8d595b1ae12c78350e7697544ddffdf749"
+    },
+    {
+      "path": "04_protocole_epreuve_enfant_adulte.md",
+      "sha256": "7a53e0302e2142f5ef1a6917f880ebaa07793a5f85b5393f2f15bdb1ba3db907"
+    },
+    {
+      "path": "05_feuille_route_technique_b3b.md",
+      "sha256": "d5a909683f9aa424eeb95695c211af7ae39b2e39c74c887bf615a67a86b0e0d3"
+    },
+    {
+      "path": "06_plan_livraison_drive_prive.md",
+      "sha256": "1d032a6e909fd24273b5b7f01092ecfb7f148b05772743c8cf1fa6cc21735f52"
+    },
+    {
+      "path": "07_contradictions_et_decisions_humaines.md",
+      "sha256": "71cdeb0aa2afa1a4b597152d27fcc27e67d97f0a5a5dd5529e72f65e03621741"
+    },
+    {
+      "path": "08_validation_evidence.json",
+      "sha256": "b68f67477fe5b71564cc18b8555391e455895c4e4931ca6355497c4de331f143"
+    }
+  ]
+}

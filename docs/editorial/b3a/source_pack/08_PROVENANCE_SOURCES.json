@@ -1,0 +1,10 @@
+{
+  "source_archive_B2B_sha256": "3fb4c306302f3739d68f3dbaf6f2b339a2d448cf5097f2212c5fd92ea9d90895",
+  "source_archive_note": "Archive historique B2-B : non preuve du HEAD B2-C4",
+  "base_git_main_attendue": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_git_tree_attendue": "72215ac28de46795338997be0bb38781274e80f4",
+  "books/halloween_2026/page_plan.csv_sha256": "6dcc6d9f2a23eddc320303e20f9cfb3f70ad9bb25f42b8b5672dc25ba07f6099",
+  "books/halloween_2026/book.yaml_sha256": "b1f0bafdc1097a384f281feb64b7f8cd7cae52cc3e837c4890a38c26da5a51d5",
+  "docs/EDITORIAL_BIBLE.md_sha256": "6852559b9e74de64e4cd6a2acf4c3e7e002ed8ba37d31ce671daaa27c89eda4a",
+  "docs/QUALITY_GATES.md_sha256": "f56684ce9f9cb5f9117565a4d373c29b550be7b39a383467e8d8e794d324c9e3"
+}

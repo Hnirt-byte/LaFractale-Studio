@@ -1,0 +1,85 @@
+{
+  "answer_counts": {
+    "A": 34,
+    "B": 33
+  },
+  "answer_distribution": {
+    "A": [
+      6,
+      6,
+      6,
+      6,
+      5,
+      5
+    ],
+    "B": [
+      6,
+      6,
+      6,
+      5,
+      5,
+      5
+    ]
+  },
+  "base_commit": "397bc32c042dcd5533296ac7fe76b6a3ad749347",
+  "base_tree": "72215ac28de46795338997be0bb38781274e80f4",
+  "c4_final_pages": [
+    4,
+    6,
+    20
+  ],
+  "ci_commit": "6ad30453cdd07a4f98237c22b8221fde42d6ceed",
+  "correction_type_count": {
+    "A": {
+      "chiffre": 3,
+      "graphique": 31
+    },
+    "B": {
+      "chiffre": 3,
+      "graphique": 30
+    }
+  },
+  "max_closed_run_p40_48": {
+    "A": 9,
+    "B": 7
+  },
+  "mockups": [
+    {
+      "file": "p56_diplome_cloture_100pct_NON_PRODUCTION.pdf",
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "pages": 1,
+      "required_text": [
+        "NON PRODUCTION",
+        "MON DIPLÔME",
+        "À bientôt avec Pip"
+      ],
+      "sha256": "3b7e8ae05c2e17f93d6da82949a610445bac672fd076c19b55043933a4ab60d3"
+    },
+    {
+      "file": "p55_lexique_18_paires_100pct_NON_PRODUCTION.pdf",
+      "media_box_pt": [
+        612.0,
+        792.0
+      ],
+      "pages": 1,
+      "required_text": [
+        "NON PRODUCTION",
+        "Mini-lexique",
+        "toile d'araignée"
+      ],
+      "sha256": "3748883efe3ad1b77f8f29188e8a823c8bbc1a73d011ed849e21ee7e0580ec09"
+    }
+  ],
+  "page_count": {
+    "A": 56,
+    "B": 56
+  },
+  "schema": "lafractale-b3a2-validation-v1",
+  "status": {
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN"
+  }
+}
