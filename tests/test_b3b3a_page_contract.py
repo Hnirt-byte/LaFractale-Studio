@@ -429,7 +429,8 @@ def test_production_authorized_is_not_a_field_nor_a_constructor_argument(contrac
     with pytest.raises(TypeError):
         PageRecord(**kwargs, readability="READABLE")
     for attr in ("production_authorized", "readability", "readable"):
-        with pytest.raises(dataclasses.FrozenInstanceError if attr not in ("readable", "production_authorized") else AttributeError):
+        # Python 3.11 raises TypeError (frozen+slots dataclass quirk) where 3.12+ raises AttributeError.
+        with pytest.raises((dataclasses.FrozenInstanceError, AttributeError, TypeError)):
             setattr(page, attr, True)
 
 
