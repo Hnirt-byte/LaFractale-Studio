@@ -28,9 +28,11 @@ from lafractale.engine.contracts import (MAX_SOURCE_BYTES, SYNTHETIC_FORBIDDEN_N
 from lafractale.engine.registry import MECHANICS
 from lafractale.engine.render import (ACTIVITIES_NAME, ANSWER_NAME, CANONICAL_PDF_DATE,
                                       CANONICAL_PDF_EPOCH, INTERIOR_NAME, MANIFEST_NAME, PACKAGE_FILES,
-                                      REPORT_NAME, SOURCE_DIR, SOURCE_NAME, render_slice)
+                                      REPORT_NAME, SOURCE_DIR, SOURCE_NAME, check_fonts,
+                                      describe_font_difference, fonts_differ, render_slice_with_fonts)
 from lafractale.engine.solvers import segments_touch
 from lafractale.export.securefs import UnsafeOutputPath, audit_root_dirfd
+from lafractale.security.strict_json import loads_strict
 from lafractale.security.text import UnsafeEditorialText, verify_text_policy
 
 REPORT_SCHEMA = "lafractale-engine-report-v1"
@@ -262,6 +264,14 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
 #: Stroke width of the symbols and diameter of the row anchors, as drawn by the renderer.
 SYMBOL_STROKE = 2.6
 ANCHOR_SIZE = 6.8
+#: A real anchor: a FILLED disc (4 Bezier curves, no stroke), exactly 6.8 x 6.8 pt, gray 0.11.
+ANCHOR_TOL = 0.05
+ANCHOR_FILL = 0.11
+ANCHOR_FILL_TOL = 0.02
+#: Visibility probe: zoom of the control raster and the lightest gray an outline pixel may have.
+PROBE_ZOOM = 2
+PROBE_DARK_MAX = 110
+PROBE_FRACTIONS = (0.25, 0.5, 0.75)
 #: Farthest a symbol's centre may sit from the anchor of its row (rows are ~88 pt apart).
 ROW_REACH = 20.0
 SHAPE_TOL = 0.02
@@ -332,6 +342,98 @@ def _centre(drawing: dict) -> tuple[float, float]:
     return ((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
 
 
+def _is_anchor(drawing: dict) -> bool:
+    """True only for a genuine anchor: both dimensions, the fill, the shape and the absence of stroke."""
+    rect, fill = drawing["rect"], drawing.get("fill")
+    return (drawing.get("type") == "f"
+            and len(drawing["items"]) == 4 and all(item[0] == "c" for item in drawing["items"])
+            and abs(rect.width - ANCHOR_SIZE) <= ANCHOR_TOL and abs(rect.height - ANCHOR_SIZE) <= ANCHOR_TOL
+            and fill is not None and all(abs(v - ANCHOR_FILL) <= ANCHOR_FILL_TOL for v in fill)
+            and abs((drawing.get("fill_opacity") or 0.0) - 1.0) <= 1e-6)
+
+
+def _is_symbol(drawing: dict) -> bool:
+    return bool(drawing.get("width")) and abs(drawing["width"] - SYMBOL_STROKE) < 0.05
+
+
+class Occlusion(NamedTuple):
+    errors: list
+    probes: int
+
+
+def _boxes_overlap(a: Any, b: Any, grow: float = 0.0) -> bool:
+    """Inclusive rectangle overlap, so that zero-height lines are not missed."""
+    return not (a.x1 < b.x0 - grow or b.x1 + grow < a.x0 or a.y1 < b.y0 - grow or b.y1 + grow < a.y0)
+
+
+def _outline_samples(drawing: dict) -> list[tuple[float, float]]:
+    """Points ON the stroke of a symbol (segments, Bezier curves, rectangle edges)."""
+    points: list[tuple[float, float]] = []
+    for item in drawing["items"]:
+        if item[0] == "l":
+            a, b = item[1], item[2]
+            points += [(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t) for t in PROBE_FRACTIONS]
+        elif item[0] == "c":
+            p1, p2, p3, p4 = item[1:5]
+            for t in PROBE_FRACTIONS:
+                u = 1 - t
+                points.append((u**3 * p1.x + 3 * u * u * t * p2.x + 3 * u * t * t * p3.x + t**3 * p4.x,
+                               u**3 * p1.y + 3 * u * u * t * p2.y + 3 * u * t * t * p3.y + t**3 * p4.y))
+        elif item[0] == "re":
+            r = item[1]
+            corners = [(r.x0, r.y0), (r.x1, r.y0), (r.x1, r.y1), (r.x0, r.y1)]
+            for (x0, y0), (x1, y1) in zip(corners, corners[1:] + corners[:1]):
+                points += [(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t) for t in PROBE_FRACTIONS]
+    return points
+
+
+def _occlusion_errors(page: Any, symbols: list[dict]) -> Occlusion:
+    """Detect what could HIDE the symbols of a match page (scope: this synthetic render).
+
+    Three independent layers, none of them exhaustive:
+    1. paint order: a drawing painted AFTER a symbol whose box overlaps it (an opaque fill, a
+       white stroke...) is reported; anchors and other symbols are the only expected neighbours;
+    2. text: any word whose box overlaps a symbol (white or invisible text included);
+    3. pixels: the page is rasterised and points ON each symbol's stroke must be dark; this also
+       sees clipping or a mask that structure analysis does not model.
+    """
+    errors: list[str] = []
+    drawings = page.get_drawings()
+    later_hits = 0
+    for symbol in symbols:
+        for other in drawings:
+            if (other["seqno"] > symbol["seqno"] and not _is_anchor(other) and not _is_symbol(other)
+                    and _boxes_overlap(symbol["rect"], other["rect"], (other.get("width") or 0.0) / 2)):
+                later_hits += 1
+    if later_hits:
+        errors.append(f"association : symbole masqué par un tracé dessiné après lui ({later_hits} recouvrement(s))")
+    words = page.get_text("words")
+    word_hits = sum(1 for symbol in symbols for word in words
+                    if _boxes_overlap(symbol["rect"], fitz.Rect(word[:4])))
+    if word_hits:
+        errors.append(f"association : symbole masqué par du texte ({word_hits} mot(s) superposé(s))")
+    pixmap = page.get_pixmap(matrix=fitz.Matrix(PROBE_ZOOM, PROBE_ZOOM), colorspace=fitz.csGRAY, alpha=False)
+
+    def dark(x: float, y: float) -> bool:
+        cx, cy = round(x * PROBE_ZOOM), round(y * PROBE_ZOOM)
+        values = [pixmap.pixel(px, py)[0]
+                  for px in range(max(cx - 1, 0), min(cx + 2, pixmap.width))
+                  for py in range(max(cy - 1, 0), min(cy + 2, pixmap.height))]
+        return bool(values) and min(values) <= PROBE_DARK_MAX
+
+    probes = 0
+    for symbol in symbols:
+        samples = _outline_samples(symbol)
+        probes += len(samples)
+        if not samples:  # fail-closed: a symbol the probe cannot sample is not verified
+            errors.append("association : symbole sans contour échantillonnable (opérateur graphique non géré)")
+            continue
+        light = sum(1 for x, y in samples if not dark(x, y))
+        if light:
+            errors.append(f"association : symbole masqué ou rogné ({light}/{len(samples)} points du contour clairs)")
+    return Occlusion(errors, probes)
+
+
 def _match_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]:
     """Check the symbols really DRAWN in each row, then the links of the corrigé.
 
@@ -343,8 +445,7 @@ def _match_coherence(activity: Activity, interior: Any, answer: Any) -> list[str
     pairs = activity.answer["left_to_right"]
     count = len(pairs)
     drawings = interior.get_drawings()
-    anchors_all = [_centre(d) for d in drawings
-                   if abs(d["rect"].width - ANCHOR_SIZE) < 0.3 and abs(d["rect"].height - ANCHOR_SIZE) < 0.3]
+    anchors_all = [_centre(d) for d in drawings if _is_anchor(d)]
     if not anchors_all:
         return ["association : aucun point d'ancrage dessiné"]
     # The columns are split at the middle of the anchors themselves, not of the page.
@@ -354,12 +455,14 @@ def _match_coherence(activity: Activity, interior: Any, answer: Any) -> list[str
     if any(len(column) != count for column in anchors.values()):
         return [f"association : {count} points d'ancrage attendus par colonne, "
                 f"{len(anchors['gauche'])} à gauche et {len(anchors['droite'])} à droite"]
-    symbols = [d for d in drawings if d.get("width") and abs(d["width"] - SYMBOL_STROKE) < 0.05]
+    if any(abs(a[1] - b[1]) > 0.5 for a, b in zip(anchors["gauche"], anchors["droite"])):
+        return ["association : points d'ancrage des deux colonnes non alignés ligne à ligne"]
+    symbols = [d for d in drawings if _is_symbol(d)]
     errors: list[str] = []
     rows_y = [a[1] for column in anchors.values() for a in column]
     strays = [d for d in drawings
               if d["rect"].width <= 90 and d["rect"].height <= 90 and d not in symbols
-              and abs(d["rect"].width - ANCHOR_SIZE) >= 0.3
+              and not _is_anchor(d)
               and min(abs(_centre(d)[1] - y) for y in rows_y) <= ROW_REACH]
     if strays:
         errors.append(f"association : {len(strays)} tracé(s) de style inattendu dans les lignes de symboles")
@@ -392,6 +495,9 @@ def _match_coherence(activity: Activity, interior: Any, answer: Any) -> list[str
             elif not _same_signature(signature, expected):
                 errors.append(f"association : tracé différent du symbole {names[side][index]!r} "
                               f"attendu ({where})")
+    for label, page in (("fiche", interior), ("corrigé", answer)):
+        hidden = _occlusion_errors(page, [d for d in page.get_drawings() if _is_symbol(d)])
+        errors.extend(f"{message} [{label}]" for message in hidden.errors)
     extra = _extra_drawings(answer, interior)
     if len(extra) != count:
         return errors + [f"association : {count} liens attendus, {len(extra)} trouvé(s)"]
@@ -517,7 +623,7 @@ def content_checks(spec_set: SpecSet, activities: tuple[Activity, ...],
 
 
 def build_report(spec_set: SpecSet, activities: tuple[Activity, ...],
-                 checks: list[dict[str, str]]) -> dict[str, Any]:
+                 checks: list[dict[str, str]], fonts: dict[str, dict[str, str]]) -> dict[str, Any]:
     passed = all(check["status"] != "FAIL" for check in checks)
     return {
         "schema": REPORT_SCHEMA,
@@ -527,6 +633,7 @@ def build_report(spec_set: SpecSet, activities: tuple[Activity, ...],
         "human_validations_recorded": HUMAN_VALIDATIONS_RECORDED,
         "engine_version": __version__,
         "pdf_creation_epoch": CANONICAL_PDF_EPOCH,
+        "fonts": fonts,
         "spec_id": spec_set.spec_id,
         "source_sha256": spec_set.source_sha256,
         "seed": spec_set.seed,
@@ -538,7 +645,8 @@ def build_report(spec_set: SpecSet, activities: tuple[Activity, ...],
     }
 
 
-def build_manifest(spec_set: SpecSet, file_hashes: dict[str, str]) -> dict[str, Any]:
+def build_manifest(spec_set: SpecSet, file_hashes: dict[str, str],
+                   fonts: dict[str, dict[str, str]]) -> dict[str, Any]:
     """Relative POSIX paths only; hashes of every other file of the package."""
     return {
         "schema": MANIFEST_SCHEMA,
@@ -548,6 +656,7 @@ def build_manifest(spec_set: SpecSet, file_hashes: dict[str, str]) -> dict[str, 
         "engine_version": __version__,
         "pdf_creation_epoch": CANONICAL_PDF_EPOCH,
         "pdf_render_isolation": "child process; SOURCE_DATE_EPOCH fixed; RL_* removed",
+        "fonts": fonts,
         "spec_id": spec_set.spec_id,
         "seed": spec_set.seed,
         "page_count": len(spec_set.pages),
@@ -618,9 +727,18 @@ def _audit_anchored(root: Path, spec_set: SpecSet, activities: tuple[Activity, .
             errors.append(str(exc))
     if errors:
         return errors
+    # The traced fonts are read from the manifest, validated, then CHECKED against the replay below.
+    try:
+        recorded_manifest = loads_strict(data[MANIFEST_NAME])
+    except ValueError:
+        return errors + ["manifest.json : JSON invalide"]
+    recorded_fonts = recorded_manifest.get("fonts") if isinstance(recorded_manifest, dict) else None
+    problems = check_fonts(recorded_fonts)
+    if problems:
+        return errors + [f"manifest.json : {problem}" for problem in problems]
     # Manifest: exact content, relative paths, hashes of every other file.
     expected_manifest = canonical_json_bytes(build_manifest(spec_set, {
-        name: sha256_hex(content) for name, content in data.items() if name != MANIFEST_NAME}))
+        name: sha256_hex(content) for name, content in data.items() if name != MANIFEST_NAME}, recorded_fonts))
     if data[MANIFEST_NAME] != expected_manifest:
         errors.append("manifest.json : contenu ou empreintes différents de la source régénérée")
     if sha256_hex(data[SOURCE_NAME]) != spec_set.source_sha256:
@@ -632,17 +750,19 @@ def _audit_anchored(root: Path, spec_set: SpecSet, activities: tuple[Activity, .
     # Independent replay (isolated render process): byte-for-byte identical PDFs.
     with tempfile.TemporaryDirectory(prefix="lafractale-engine-qa-") as scratch:
         try:
-            interior, answer = render_slice(spec_set, activities, Path(scratch))
+            interior, answer, replay_fonts = render_slice_with_fonts(spec_set, activities, Path(scratch))
             replays = {INTERIOR_NAME: read_bounded(interior, MAX_PDF_BYTES, label="rejeu"),
                        ANSWER_NAME: read_bounded(answer, MAX_PDF_BYTES, label="rejeu")}
         except EngineError as exc:
             return errors + [f"rejeu du rendu impossible : {exc}"]
+    if fonts_differ(recorded_fonts, replay_fonts):
+        errors.append(describe_font_difference(recorded_fonts, replay_fonts))
     for name, replay in replays.items():
         if data[name] != replay:
             errors.append(f"{name} : différent du rendu régénéré depuis la source")
     # The analysed PDFs are exactly the bytes that were hashed and compared above.
     checks = content_checks(spec_set, activities, data[INTERIOR_NAME], data[ANSWER_NAME])
     errors.extend(f"{c['id']} : {c['detail']}" for c in checks if c["status"] == "FAIL")
-    if data[REPORT_NAME] != canonical_json_bytes(build_report(spec_set, activities, checks)):
+    if data[REPORT_NAME] != canonical_json_bytes(build_report(spec_set, activities, checks, recorded_fonts)):
         errors.append("quality_report.json : différent du rapport recalculé")
     return errors

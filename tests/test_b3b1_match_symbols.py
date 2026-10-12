@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover
     import fitz
 
 import lafractale.layout.pdf as pdfmod
-from b3b1_support import FIXTURE, render_in_process
+from b3b1_support import FIXTURE, patch_match as _patch_match, patch_symbol, qa_failures, render_in_process
 from lafractale.engine import qa
 from lafractale.engine.contracts import load_spec_set
 from lafractale.engine.pipeline import build_activities
@@ -31,32 +31,11 @@ def case():
 
 def failures(case, tmp_path):
     spec, activities = case
-    interior, answer = render_in_process(spec, activities, tmp_path)
-    return {c["id"]: c["detail"] for c in qa.content_checks(spec, activities, interior, answer)
-            if c["status"] == "FAIL"}
+    return qa_failures(spec, activities, tmp_path)
 
 
-def patch_match(monkeypatch, transform):
-    original = pdfmod._match
-
-    def wrapper(c, act, board, solution):
-        original(c, transform(act), board, solution)
-
-    monkeypatch.setattr(pdfmod, "_match", wrapper)
-
-
-def patch_symbol(monkeypatch, per_call):
-    """per_call(index_in_page, name) -> list of (name, dx) to draw (default: [(name, 0)])."""
-    original = pdfmod._symbol
-    counter = {"n": 0}
-
-    def wrapper(c, name, x, y, r):
-        index = counter["n"] % 8  # four left + four right symbols per match page
-        counter["n"] += 1
-        for drawn, dx in per_call(index, name):
-            original(c, drawn, x + dx, y, r)
-
-    monkeypatch.setattr(pdfmod, "_symbol", wrapper)
+def patch_match(monkeypatch, transform):  # kept as a local alias for readability
+    _patch_match(monkeypatch, transform)
 
 
 def test_nominal_association_passes_with_matching_symbols_and_answer(case, tmp_path):

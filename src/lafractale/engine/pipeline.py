@@ -23,7 +23,8 @@ from lafractale.engine.qa import (audit_package, build_manifest, build_report,
                                   content_checks, package_limit)
 from lafractale.engine.registry import MECHANICS
 from lafractale.engine.render import (ACTIVITIES_NAME, ANSWER_NAME, INTERIOR_NAME, MANIFEST_NAME,
-                                      PACKAGE_FILES, REPORT_NAME, SOURCE_DIR, SOURCE_NAME, render_slice)
+                                      PACKAGE_FILES, REPORT_NAME, SOURCE_DIR, SOURCE_NAME,
+                                      render_slice_with_fonts)
 from lafractale.export.securefs import new_regular_file
 from lafractale.quality.checks import validate_collection
 from lafractale.security.text import UnsafeEditorialText, verify_text_policy
@@ -72,12 +73,12 @@ def _build_staging(spec_bytes: bytes, spec_set: SpecSet, result: SliceResult, st
     analysed, hashed and returned."""
     (staging / SOURCE_DIR).mkdir()
     (staging / SOURCE_NAME).write_bytes(spec_bytes)
-    interior, answer = render_slice(spec_set, result.activities, staging)
+    interior, answer, fonts = render_slice_with_fonts(spec_set, result.activities, staging)
     (staging / ACTIVITIES_NAME).write_bytes(canonical_json_bytes([a.as_dict() for a in result.activities]))
     contents = {INTERIOR_NAME: read_bounded(interior, package_limit(INTERIOR_NAME), label=INTERIOR_NAME),
                 ANSWER_NAME: read_bounded(answer, package_limit(ANSWER_NAME), label=ANSWER_NAME)}
     checks = content_checks(spec_set, result.activities, contents[INTERIOR_NAME], contents[ANSWER_NAME])
-    report = build_report(spec_set, result.activities, checks)
+    report = build_report(spec_set, result.activities, checks, fonts)
     if not report["pass"]:
         failed = [f"{c['id']} : {c['detail']}" for c in checks if c["status"] == "FAIL"]
         raise EngineError("QA refusée : " + " | ".join(failed))
@@ -86,7 +87,7 @@ def _build_staging(spec_bytes: bytes, spec_set: SpecSet, result: SliceResult, st
                                              label=ACTIVITIES_NAME)
     contents[SOURCE_NAME] = spec_bytes
     contents[MANIFEST_NAME] = canonical_json_bytes(build_manifest(
-        spec_set, {name: sha256_hex(data) for name, data in contents.items()}))
+        spec_set, {name: sha256_hex(data) for name, data in contents.items()}, fonts))
     for name in (REPORT_NAME, MANIFEST_NAME):
         (staging / name).write_bytes(contents[name])
     return {name: contents[name] for name in PACKAGE_FILES}

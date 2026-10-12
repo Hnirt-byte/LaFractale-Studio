@@ -14,8 +14,8 @@
   "environment_dependent": {
     "answer_key_SYNTHETIC_NON_PRODUCTION.pdf": "640d7864593f3a910a22d48d3f22315c26def6055303983074b1dd90cf72461e",
     "interior_SYNTHETIC_NON_PRODUCTION.pdf": "c9f614d810cbd7d164c761be84d7a5aa167546d9ae604774c439732e0776987d",
-    "manifest.json": "161cb853b263715f4ce593ae94548771aae3025caa269bd2ab7ba069f7d51e7d",
-    "quality_report.json": "b009f3a5f3f9b86c3aa7d3382a8f01f9684881d3c213355651bf319b83e6a834"
+    "manifest.json": "67b963d7e27a0fe39694214d178617e02e222545f47be91fdcc8d40b40a6c5af",
+    "quality_report.json": "9184cf9c8877dd71c4f46faf30f1ed8112186cbb0ff205ec026fd0e67590cfaf"
   },
   "fixture": "tests/fixtures/b3b1/synthetic_slice_v1.json",
   "pdf_creation_epoch": 946684800,
