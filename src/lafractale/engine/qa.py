@@ -164,7 +164,7 @@ def _maze_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
         errors.append("labyrinthe : le tracé du corrigé ne suit pas le chemin de l'activité")
     walls = []
     for drawing in interior.get_drawings():
-        if abs((drawing.get("width") or 0) - 3.0) < 0.05:
+        if abs((drawing.get("width") or 0) - WALL_STROKE) < 0.05:
             walls.extend(((i[1].x, i[1].y), (i[2].x, i[2].y)) for i in drawing["items"] if i[0] == "l")
     # Rebuild the walls from the activity's own passages, anchored on the drawn
     # solution (cell size and origin are fitted from it), and compare to the page.
@@ -189,6 +189,13 @@ def _maze_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
         if any(segments_touch(a, b, w0, w1) for w0, w1 in walls):
             errors.append("labyrinthe : le tracé du corrigé traverse un mur dessiné")
             break
+    # Walls hidden by a later drawing, by text or by clipping (other walls and the solution line are the expected neighbours).
+    solution_seqnos = {d["seqno"] for d in extra}
+    for label, page in (("fiche", interior), ("corrigé", answer)):
+        hidden = _occlusion_errors(page, _wall_segments(page), scope="labyrinthe", subject="mur",
+                                   expected_later=lambda d: (abs((d.get("width") or 0) - WALL_STROKE) < 0.05
+                                                     or (page is answer and d["seqno"] in solution_seqnos)))
+        errors.extend(f"{message} [{label}]" for message in hidden.errors)
     return errors
 
 
@@ -225,7 +232,7 @@ def _affine_residual(source: list[float], target: list[float], sign: int) -> flo
 def _small_dots(page: Any) -> list[tuple[float, float]]:
     return [((d["rect"].x0 + d["rect"].x1) / 2, (d["rect"].y0 + d["rect"].y1) / 2)
             for d in page.get_drawings()
-            if abs(d["rect"].width - 8.2) < 0.4 and abs(d["rect"].height - 8.2) < 0.4]
+            if _is_dot(d)]
 
 
 def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]:
@@ -254,6 +261,10 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
               and min(ys) - 50 <= (w[1] + w[3]) / 2 <= max(ys) + 50]
     if Counter(labels) != Counter(str(n) for n in range(1, count + 1)):
         errors.append("points : numéros affichés différents de 1..N")
+    for label, page in (("fiche", interior), ("corrigé", answer)):
+        hidden = _occlusion_errors(page, [d for d in page.get_drawings() if _is_dot(d)], scope="points",
+                                   subject="point", expected_later=_is_dot)
+        errors.extend(f"{message} [{label}]" for message in hidden.errors)
     numbers = [((w[0] + w[2]) / 2, (w[1] + w[3]) / 2, w[4]) for w in interior.get_text("words") if w[4].isdigit()]
     for n, (dx, dy) in enumerate(dots, start=1):
         if not any(text == str(n) and hypot(wx - dx, wy - dy) <= LABEL_REACH for wx, wy, text in numbers):
@@ -263,6 +274,8 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
 
 #: Stroke width of the symbols and diameter of the row anchors, as drawn by the renderer.
 SYMBOL_STROKE = 2.6
+#: Stroke width of the maze walls.
+WALL_STROKE = 3.0
 ANCHOR_SIZE = 6.8
 #: A real anchor: a FILLED disc (4 Bezier curves, no stroke), exactly 6.8 x 6.8 pt, gray 0.11.
 ANCHOR_TOL = 0.05
@@ -387,8 +400,35 @@ def _outline_samples(drawing: dict) -> list[tuple[float, float]]:
     return points
 
 
-def _occlusion_errors(page: Any, symbols: list[dict]) -> Occlusion:
+def _is_dot(drawing: dict) -> bool:
+    """A numbered dot of a connect-the-dots page: 8.2 x 8.2 pt, as drawn by the historical renderer."""
+    rect = drawing["rect"]
+    return abs(rect.width - 8.2) < 0.4 and abs(rect.height - 8.2) < 0.4
+
+
+def _wall_segments(page: Any) -> list[dict]:
+    """Every maze wall as its own target: a drawing per straight segment (own box, own paint order).
+
+    PyMuPDF merges walls painted with one style into a single drawing whose box spans the whole maze;
+    a box that large would overlap every later drawing, so each segment becomes a pseudo-drawing.
+    """
+    segments = []
+    for drawing in page.get_drawings():
+        if abs((drawing.get("width") or 0) - WALL_STROKE) < 0.05:
+            for item in drawing["items"]:
+                if item[0] == "l":
+                    segments.append({"items": [item], "seqno": drawing["seqno"], "width": drawing["width"],
+                                     "rect": fitz.Rect(item[1], item[2]).normalize()})
+    return segments
+
+
+def _occlusion_errors(page: Any, symbols: list[dict], *, expected_later: Any = None,
+                      scope: str = "association", subject: str = "symbole") -> Occlusion:
     """Detect what could HIDE the symbols of a match page (scope: this synthetic render).
+
+    The same three layers also protect the maze walls and the numbered dots (``scope`` and ``subject``
+    name them in the messages); ``expected_later(drawing)`` says which drawings may legitimately be
+    painted after a target (default: row anchors and other symbols, for the match page).
 
     Three independent layers, none of them exhaustive:
     1. paint order: a drawing painted AFTER a symbol whose box overlaps it (an opaque fill, a
@@ -397,21 +437,23 @@ def _occlusion_errors(page: Any, symbols: list[dict]) -> Occlusion:
     3. pixels: the page is rasterised and points ON each symbol's stroke must be dark; this also
        sees clipping or a mask that structure analysis does not model.
     """
+    if expected_later is None:
+        expected_later = lambda drawing: _is_anchor(drawing) or _is_symbol(drawing)  # noqa: E731
     errors: list[str] = []
     drawings = page.get_drawings()
     later_hits = 0
     for symbol in symbols:
         for other in drawings:
-            if (other["seqno"] > symbol["seqno"] and not _is_anchor(other) and not _is_symbol(other)
+            if (other["seqno"] > symbol["seqno"] and not expected_later(other)
                     and _boxes_overlap(symbol["rect"], other["rect"], (other.get("width") or 0.0) / 2)):
                 later_hits += 1
     if later_hits:
-        errors.append(f"association : symbole masqué par un tracé dessiné après lui ({later_hits} recouvrement(s))")
+        errors.append(f"{scope} : {subject} masqué par un tracé dessiné après lui ({later_hits} recouvrement(s))")
     words = page.get_text("words")
     word_hits = sum(1 for symbol in symbols for word in words
                     if _boxes_overlap(symbol["rect"], fitz.Rect(word[:4])))
     if word_hits:
-        errors.append(f"association : symbole masqué par du texte ({word_hits} mot(s) superposé(s))")
+        errors.append(f"{scope} : {subject} masqué par du texte ({word_hits} mot(s) superposé(s))")
     pixmap = page.get_pixmap(matrix=fitz.Matrix(PROBE_ZOOM, PROBE_ZOOM), colorspace=fitz.csGRAY, alpha=False)
 
     def dark(x: float, y: float) -> bool:
@@ -426,11 +468,11 @@ def _occlusion_errors(page: Any, symbols: list[dict]) -> Occlusion:
         samples = _outline_samples(symbol)
         probes += len(samples)
         if not samples:  # fail-closed: a symbol the probe cannot sample is not verified
-            errors.append("association : symbole sans contour échantillonnable (opérateur graphique non géré)")
+            errors.append(f"{scope} : {subject} sans contour échantillonnable (opérateur graphique non géré)")
             continue
         light = sum(1 for x, y in samples if not dark(x, y))
         if light:
-            errors.append(f"association : symbole masqué ou rogné ({light}/{len(samples)} points du contour clairs)")
+            errors.append(f"{scope} : {subject} masqué ou rogné ({light}/{len(samples)} points du contour clairs)")
     return Occlusion(errors, probes)
 
 
