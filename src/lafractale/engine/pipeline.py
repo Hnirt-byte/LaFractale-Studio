@@ -17,11 +17,13 @@ from lafractale.activities.engine import generate, stable_seed
 from lafractale.activities.models import Activity
 from lafractale.engine import EngineError
 from lafractale.engine.contracts import (SYNTHETIC_FORBIDDEN_NAMES, SpecSet, canonical_json_bytes,
-                                         load_spec_set, parse_spec_set, read_source_file, sha256_hex)
-from lafractale.engine.qa import audit_package, build_manifest, build_report, content_checks
+                                         load_spec_set, parse_spec_set, read_bounded, read_source_file,
+                                         sha256_hex)
+from lafractale.engine.qa import (audit_package, build_manifest, build_report,
+                                  content_checks, package_limit)
 from lafractale.engine.registry import MECHANICS
-from lafractale.engine.render import (ACTIVITIES_NAME, MANIFEST_NAME, PACKAGE_FILES, REPORT_NAME,
-                                      SOURCE_DIR, SOURCE_NAME, render_slice)
+from lafractale.engine.render import (ACTIVITIES_NAME, ANSWER_NAME, INTERIOR_NAME, MANIFEST_NAME,
+                                      PACKAGE_FILES, REPORT_NAME, SOURCE_DIR, SOURCE_NAME, render_slice)
 from lafractale.export.securefs import new_regular_file
 from lafractale.quality.checks import validate_collection
 from lafractale.security.text import UnsafeEditorialText, verify_text_policy
@@ -66,20 +68,28 @@ def build_activities(spec_set: SpecSet) -> SliceResult:
 
 
 def _build_staging(spec_bytes: bytes, spec_set: SpecSet, result: SliceResult, staging: Path) -> dict[str, bytes]:
+    """Build the package in ``staging``; every file is read ONCE and the same bytes are
+    analysed, hashed and returned."""
     (staging / SOURCE_DIR).mkdir()
     (staging / SOURCE_NAME).write_bytes(spec_bytes)
     interior, answer = render_slice(spec_set, result.activities, staging)
     (staging / ACTIVITIES_NAME).write_bytes(canonical_json_bytes([a.as_dict() for a in result.activities]))
-    checks = content_checks(spec_set, result.activities, interior, answer)
+    contents = {INTERIOR_NAME: read_bounded(interior, package_limit(INTERIOR_NAME), label=INTERIOR_NAME),
+                ANSWER_NAME: read_bounded(answer, package_limit(ANSWER_NAME), label=ANSWER_NAME)}
+    checks = content_checks(spec_set, result.activities, contents[INTERIOR_NAME], contents[ANSWER_NAME])
     report = build_report(spec_set, result.activities, checks)
-    (staging / REPORT_NAME).write_bytes(canonical_json_bytes(report))
     if not report["pass"]:
         failed = [f"{c['id']} : {c['detail']}" for c in checks if c["status"] == "FAIL"]
         raise EngineError("QA refusée : " + " | ".join(failed))
-    hashes = {name: sha256_hex((staging / name).read_bytes())
-              for name in PACKAGE_FILES if name != MANIFEST_NAME}
-    (staging / MANIFEST_NAME).write_bytes(canonical_json_bytes(build_manifest(spec_set, hashes)))
-    return {name: (staging / name).read_bytes() for name in PACKAGE_FILES}
+    contents[REPORT_NAME] = canonical_json_bytes(report)
+    contents[ACTIVITIES_NAME] = read_bounded(staging / ACTIVITIES_NAME, package_limit(ACTIVITIES_NAME),
+                                             label=ACTIVITIES_NAME)
+    contents[SOURCE_NAME] = spec_bytes
+    contents[MANIFEST_NAME] = canonical_json_bytes(build_manifest(
+        spec_set, {name: sha256_hex(data) for name, data in contents.items()}))
+    for name in (REPORT_NAME, MANIFEST_NAME):
+        (staging / name).write_bytes(contents[name])
+    return {name: contents[name] for name in PACKAGE_FILES}
 
 
 def _check_destination(out_dir: Path) -> None:

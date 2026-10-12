@@ -1,0 +1,23 @@
+{
+  "always_stable": {
+    "activities.json": "6fe8a13429390b9d8bd2909b6e55a2552f85cf805ff225258a6114cf93390e39",
+    "sources/spec.json": "88e98de2eb9e3d33568ca394d37c9096bb59fbfaea2acbd6e47aa02f26b4c415"
+  },
+  "environment": {
+    "fonts_sha256": {
+      "DejaVuSans-Bold.ttf": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895",
+      "DejaVuSans.ttf": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"
+    },
+    "pymupdf": "1.28.2",
+    "reportlab": "4.5.1"
+  },
+  "environment_dependent": {
+    "answer_key_SYNTHETIC_NON_PRODUCTION.pdf": "640d7864593f3a910a22d48d3f22315c26def6055303983074b1dd90cf72461e",
+    "interior_SYNTHETIC_NON_PRODUCTION.pdf": "c9f614d810cbd7d164c761be84d7a5aa167546d9ae604774c439732e0776987d",
+    "manifest.json": "161cb853b263715f4ce593ae94548771aae3025caa269bd2ab7ba069f7d51e7d",
+    "quality_report.json": "b009f3a5f3f9b86c3aa7d3382a8f01f9684881d3c213355651bf319b83e6a834"
+  },
+  "fixture": "tests/fixtures/b3b1/synthetic_slice_v1.json",
+  "pdf_creation_epoch": 946684800,
+  "schema": "lafractale-engine-reference-hashes-v1"
+}

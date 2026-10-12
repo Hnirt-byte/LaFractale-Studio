@@ -187,3 +187,12 @@ def test_unreadable_pdf_is_a_failed_check_not_an_exception(tmp_path):
     junk.write_bytes(b"%PDF-1.4 definitely not a pdf")
     checks = content_checks(spec, activities, junk, junk)
     assert any(c["status"] == "FAIL" and c["id"] in {"pdf.readable", "pdf.analysis"} for c in checks)
+
+
+def test_non_canonical_pdf_date_is_reported_explicitly(package):
+    pdf = package / INTERIOR_NAME
+    data = pdf.read_bytes()
+    assert data.count(b"D:20000101000000") == 2  # CreationDate and ModDate
+    pdf.write_bytes(data.replace(b"D:20000101000000", b"D:20000101000001"))  # same length: xref intact
+    errors = audit_existing_package(package, FIXTURE)
+    assert any("date canonique" in e for e in errors), errors

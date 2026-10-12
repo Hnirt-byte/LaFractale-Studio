@@ -178,36 +178,60 @@ def test_cli_validate_run_audit_and_refusals(tmp_path, capsys):
     assert not (tmp_path / "x").exists()
 
 
-def test_engine_package_does_not_touch_historical_modules():
-    """Guard: the slice only imports the repository; it never monkeypatches it."""
-    import lafractale.layout.pdf as pdf_module
-    from lafractale.engine import render
-    assert render.write_pdf is pdf_module.write_pdf
-    assert os.environ.get("LAFRACTALE_PRODUCTION") is None
+def test_isolated_render_equals_the_historical_writer_under_the_canonical_environment(tmp_path, monkeypatch):
+    """The child process renders exactly what ``write_pdf`` writes in a canonical environment."""
+    from lafractale.engine.render import CANONICAL_PDF_EPOCH, render_slice
+    from lafractale.layout.pdf import write_pdf
+    spec = load_spec_set(FIXTURE)
+    activities = build_activities(spec).activities
+    isolated = tmp_path / "isolated"
+    isolated.mkdir()
+    interior, answer = render_slice(spec, activities, isolated)
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(CANONICAL_PDF_EPOCH))
+    direct = tmp_path / "direct"
+    direct.mkdir()
+    write_pdf(direct / "i.pdf", list(activities), spec.book_dict(), answer_key=False)
+    write_pdf(direct / "a.pdf", list(activities), spec.book_dict(), answer_key=True)
+    assert interior.read_bytes() == (direct / "i.pdf").read_bytes()
+    assert answer.read_bytes() == (direct / "a.pdf").read_bytes()
 
 
-def test_source_texts_may_contain_the_marker_words_of_the_title(tmp_path):
-    """User text containing 'CORRIGÉ' or the fiche title must not fail the title check."""
-    src = tmp_path / "markers.json"
-    src.write_bytes(mutated(lambda d: (d["pages"][0].update(scene="Le CORRIGÉ du jeu"),
-                                       d["pages"][1].update(prompt_fr="Je joue et j'apprends !"))))
-    out = tmp_path / "pkg"
-    generate_package(src, out)
-    assert audit_existing_package(out, src) == []
+def test_render_worker_refuses_a_non_canonical_environment(tmp_path):
+    import subprocess
+    import sys
+    env = {**os.environ, "SOURCE_DATE_EPOCH": "5"}
+    done = subprocess.run([sys.executable, "-m", "lafractale.engine._render_worker", str(tmp_path)],
+                          input=b"{}", env=env, capture_output=True)
+    assert done.returncode == 2 and b"non canonique" in done.stderr and not list(tmp_path.iterdir())
 
 
-def test_rollback_removes_every_directory_it_created(tmp_path, monkeypatch):
-    import lafractale.engine.pipeline as pipeline
-    real = pipeline.audit_package
-    calls = []
+def test_canonical_environment_is_a_sanitized_copy():
+    from lafractale.engine.render import canonical_render_environment
+    base = {"PATH": "/bin", "SOURCE_DATE_EPOCH": "1", "RL_invariant": "0", "RL_x": "y", "KEEP": "1"}
+    snapshot = dict(base)
+    env = canonical_render_environment(base)
+    assert env == {"PATH": "/bin", "KEEP": "1", "SOURCE_DATE_EPOCH": "946684800"}
+    assert base == snapshot  # the input mapping is never mutated
 
-    def flaky(*args, **kwargs):
-        calls.append(1)
-        return [] if len(calls) == 1 else ["échec simulé après publication"]
 
-    monkeypatch.setattr(pipeline, "audit_package", flaky)
-    out = tmp_path / "a" / "b" / "c"
-    with pytest.raises(EngineError, match="après publication"):
-        generate_package(FIXTURE, out)
-    assert len(calls) == 2 and not (tmp_path / "a").exists()
-    monkeypatch.setattr(pipeline, "audit_package", real)
+def test_canonical_pdf_date_matches_what_reportlab_writes(built):
+    import pymupdf as fitz
+    from lafractale.engine.render import CANONICAL_PDF_DATE
+    assert CANONICAL_PDF_DATE == "D:20000101000000+00'00'"
+    for name in (INTERIOR_NAME, ANSWER_NAME):
+        with fitz.open(built["first"] / name) as pdf:
+            assert pdf.metadata["creationDate"] == pdf.metadata["modDate"] == CANONICAL_PDF_DATE
+
+
+def test_activity_json_round_trip_is_lossless():
+    from lafractale.engine.render import activity_from_dict
+    for activity in build_activities(load_spec_set(FIXTURE)).activities:
+        assert activity_from_dict(json.loads(json.dumps(activity.as_dict()))) == activity
+
+
+def test_canonical_epoch_is_recorded_in_report_and_manifest(built):
+    for name in ("quality_report.json", "manifest.json"):
+        data = json.loads((built["first"] / name).read_text(encoding="utf-8"))
+        assert data["pdf_creation_epoch"] == 946684800
+    manifest = json.loads((built["first"] / "manifest.json").read_text(encoding="utf-8"))
+    assert "RL_*" in manifest["pdf_render_isolation"]

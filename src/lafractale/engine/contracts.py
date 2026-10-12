@@ -12,11 +12,10 @@ import json
 import os
 import re
 import stat
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from lafractale.engine import SPEC_KIND, ContractError
+from lafractale.engine import SPEC_KIND, ContractError, EngineError
 from lafractale.engine.registry import MECHANICS
 from lafractale.security.strict_json import loads_strict
 from lafractale.security.text import UnsafeEditorialText, verify_text_policy
@@ -185,18 +184,37 @@ def parse_spec_set(payload: bytes) -> SpecSet:
                    tuple(parsed), sha256_hex(bytes(payload)))
 
 
+def read_bounded(path: str | os.PathLike, max_bytes: int, *, label: str, error=EngineError) -> bytes:
+    """Read a regular file of at most ``max_bytes``, validated on the OPENED descriptor.
+
+    The file is opened once with O_NOFOLLOW | O_NONBLOCK (a symlink is refused, a FIFO does
+    not block), ``fstat`` runs on that same descriptor (regular file, size limit) and at most
+    ``max_bytes + 1`` bytes are read from it, so a file that grows after the size check is
+    still refused. Nothing larger than the limit is ever loaded.
+    """
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise error(f"{label} : illisible ou lien symbolique refusé ({exc.strerror or exc})") from exc
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise error(f"{label} : fichier régulier requis (tube, périphérique ou répertoire refusé)")
+        if info.st_size > max_bytes:
+            raise error(f"{label} : fichier trop volumineux ({info.st_size} octets, limite {max_bytes})")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(max_bytes + 1)
+    finally:
+        os.close(fd)
+    if len(data) > max_bytes:
+        raise error(f"{label} : fichier trop volumineux ou grossi pendant la lecture (limite {max_bytes})")
+    return data
+
+
 def read_source_file(path: str | os.PathLike) -> bytes:
     """Read a source file: regular file, no symlink, bounded size."""
-    target = Path(path)
-    try:
-        info = os.lstat(target)
-    except OSError as exc:
-        raise ContractError(f"source illisible : {exc}") from exc
-    if not stat.S_ISREG(info.st_mode):
-        raise ContractError("source : fichier régulier requis (lien symbolique refusé)")
-    if info.st_size > MAX_SOURCE_BYTES:
-        raise ContractError(f"source : plus de {MAX_SOURCE_BYTES} octets")
-    return target.read_bytes()
+    return read_bounded(path, MAX_SOURCE_BYTES, label="source", error=ContractError)
 
 
 def load_spec_set(path: str | os.PathLike) -> SpecSet:

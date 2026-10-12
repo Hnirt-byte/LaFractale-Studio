@@ -8,11 +8,11 @@ Everything here is deterministic: no timestamps, no absolute paths.
 from __future__ import annotations
 
 from collections import Counter
-from math import hypot
+from math import cos, hypot, pi, sin
 from pathlib import Path
 import stat
 import tempfile
-from typing import Any, Iterable
+from typing import Any, Iterable, NamedTuple
 
 try:  # PyMuPDF >= 1.24.3 exposes ``pymupdf``; older releases only ``fitz``.
     import pymupdf as fitz
@@ -23,12 +23,12 @@ from lafractale import __version__
 from lafractale.activities.models import Activity, content_fingerprint
 from lafractale.engine import (GATES, HUMAN_VALIDATIONS_RECORDED, KIND, READY_FOR_KDP,
                                EngineError)
-from lafractale.engine.contracts import (SYNTHETIC_FORBIDDEN_NAMES, SpecSet, canonical_json_bytes,
-                                         sha256_hex)
+from lafractale.engine.contracts import (MAX_SOURCE_BYTES, SYNTHETIC_FORBIDDEN_NAMES, SpecSet,
+                                         canonical_json_bytes, read_bounded, sha256_hex)
 from lafractale.engine.registry import MECHANICS
-from lafractale.engine.render import (ACTIVITIES_NAME, ANSWER_NAME, INTERIOR_NAME, MANIFEST_NAME,
-                                      PACKAGE_FILES, REPORT_NAME, SOURCE_DIR, SOURCE_NAME,
-                                      render_slice)
+from lafractale.engine.render import (ACTIVITIES_NAME, ANSWER_NAME, CANONICAL_PDF_DATE,
+                                      CANONICAL_PDF_EPOCH, INTERIOR_NAME, MANIFEST_NAME, PACKAGE_FILES,
+                                      REPORT_NAME, SOURCE_DIR, SOURCE_NAME, render_slice)
 from lafractale.engine.solvers import segments_touch
 from lafractale.export.securefs import UnsafeOutputPath, audit_root_dirfd
 from lafractale.security.text import UnsafeEditorialText, verify_text_policy
@@ -38,6 +38,10 @@ MANIFEST_SCHEMA = "lafractale-engine-manifest-v1"
 #: Minimum distance between any drawn object / text and the page edge (0.5 in).
 PRINT_SAFE_MARGIN_PT = 36.0
 TOL = 0.06
+#: Read ceilings. JSON: the historical builder's cap for activities.json / text outputs;
+#: PDF: the largest historical artifact cap (previews, 12 MB); source: contracts.MAX_SOURCE_BYTES.
+MAX_JSON_BYTES = 4_000_000
+MAX_PDF_BYTES = 12_000_000
 #: Farthest a number label may sit from its dot (renderer offsets stay below 40 pt).
 LABEL_REACH = 45.0
 HELVETICA_WARNING = ("Référence Helvetica (base-14) non intégrée dans le rendu historique : "
@@ -255,28 +259,162 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
     return errors
 
 
+#: Stroke width of the symbols and diameter of the row anchors, as drawn by the renderer.
+SYMBOL_STROKE = 2.6
+ANCHOR_SIZE = 6.8
+#: Farthest a symbol's centre may sit from the anchor of its row (rows are ~88 pt apart).
+ROW_REACH = 20.0
+SHAPE_TOL = 0.02
+_POLYGONS = {"triangle": 3, "diamond": 4, "hexagon": 6, "star": 10}
+
+class Signature(NamedTuple):
+    kind: str
+    points: list
+    aspect: float
+
+
+def _normalised(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    scale = max(max(xs) - min(xs), max(ys) - min(ys)) or 1.0
+    return [((x - cx) / scale, (y - cy) / scale) for x, y in points]
+
+
+def _drawn_signature(drawing: dict) -> Signature:
+    """Normalised geometric signature of ONE drawn symbol (position and size removed)."""
+    items = drawing["items"]
+    ops = {item[0] for item in items}
+    rect = drawing["rect"]
+    aspect = round(rect.width / rect.height, 2) if rect.height else 0.0
+    if ops == {"c"} and len(items) == 4:
+        return Signature("circle", [], aspect)
+    if ops == {"re"} and len(items) == 1:
+        return Signature("rect", [], aspect)
+    if ops == {"l"}:
+        return Signature(f"poly{len(items)}", _normalised([(item[1].x, item[1].y) for item in items]), 1.0)
+    return Signature("unknown", [], aspect)
+
+
+def _expected_signature(name: str) -> Signature | None:
+    """What the symbol called ``name`` must look like, derived from its definition
+    (regular polygon, star with an inner radius of 0.47; PyMuPDF y axis points down)."""
+    if name == "circle":
+        return Signature("circle", [], 1.0)
+    if name == "square":
+        return Signature("rect", [], 1.0)
+    count = _POLYGONS.get(name)
+    if count is None:
+        return None
+    points = []
+    for i in range(count):
+        radius = (1.0 if i % 2 == 0 else 0.47) if name == "star" else 1.0
+        angle = pi / 2 + 2 * pi * i / count
+        points.append((radius * cos(angle), -radius * sin(angle)))
+    return Signature(f"poly{count}", _normalised(points), 1.0)
+
+
+def _same_signature(a: Signature, b: Signature) -> bool:
+    if a.kind != b.kind or abs(a.aspect - b.aspect) > 0.03 or len(a.points) != len(b.points):
+        return False
+    pool = list(b.points)
+    for x, y in a.points:
+        for index, (u, v) in enumerate(pool):
+            if abs(x - u) <= SHAPE_TOL and abs(y - v) <= SHAPE_TOL:
+                del pool[index]
+                break
+        else:
+            return False
+    return True
+
+
+def _centre(drawing: dict) -> tuple[float, float]:
+    rect = drawing["rect"]
+    return ((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+
+
 def _match_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]:
+    """Check the symbols really DRAWN in each row, then the links of the corrigé.
+
+    Expected shapes are derived from the activity (itself regenerated from the source),
+    never from what the PDF claims: a swapped, replaced, missing or extra symbol, or a
+    link joining two different symbols, is reported. Rows are defined by the drawn anchors.
+    """
+    names = {"gauche": activity.geometry["left_symbols"], "droite": activity.geometry["right_symbols"]}
     pairs = activity.answer["left_to_right"]
+    count = len(pairs)
+    drawings = interior.get_drawings()
+    anchors_all = [_centre(d) for d in drawings
+                   if abs(d["rect"].width - ANCHOR_SIZE) < 0.3 and abs(d["rect"].height - ANCHOR_SIZE) < 0.3]
+    if not anchors_all:
+        return ["association : aucun point d'ancrage dessiné"]
+    # The columns are split at the middle of the anchors themselves, not of the page.
+    middle = (min(a[0] for a in anchors_all) + max(a[0] for a in anchors_all)) / 2
+    anchors = {"gauche": sorted((a for a in anchors_all if a[0] < middle), key=lambda a: a[1]),
+               "droite": sorted((a for a in anchors_all if a[0] >= middle), key=lambda a: a[1])}
+    if any(len(column) != count for column in anchors.values()):
+        return [f"association : {count} points d'ancrage attendus par colonne, "
+                f"{len(anchors['gauche'])} à gauche et {len(anchors['droite'])} à droite"]
+    symbols = [d for d in drawings if d.get("width") and abs(d["width"] - SYMBOL_STROKE) < 0.05]
+    errors: list[str] = []
+    rows_y = [a[1] for column in anchors.values() for a in column]
+    strays = [d for d in drawings
+              if d["rect"].width <= 90 and d["rect"].height <= 90 and d not in symbols
+              and abs(d["rect"].width - ANCHOR_SIZE) >= 0.3
+              and min(abs(_centre(d)[1] - y) for y in rows_y) <= ROW_REACH]
+    if strays:
+        errors.append(f"association : {len(strays)} tracé(s) de style inattendu dans les lignes de symboles")
+    drawn: dict[str, list[Signature | None]] = {}
+    for side in ("gauche", "droite"):
+        rows: list[list[dict]] = [[] for _ in range(count)]
+        for symbol in symbols:
+            cx, cy = _centre(symbol)
+            if (cx < middle) != (side == "gauche"):
+                continue
+            nearest = min(range(count), key=lambda k: abs(anchors[side][k][1] - cy))
+            if abs(anchors[side][nearest][1] - cy) > ROW_REACH:
+                errors.append(f"association : tracé hors de toute ligne (colonne {side})")
+                continue
+            rows[nearest].append(symbol)
+        drawn[side] = []
+        for index, row in enumerate(rows):
+            where = f"colonne {side}, ligne {index + 1}"
+            if not row:
+                errors.append(f"association : symbole manquant ({where})")
+                drawn[side].append(None)
+                continue
+            if len(row) > 1:
+                errors.append(f"association : symbole supplémentaire ({where}, {len(row)} tracés)")
+            signature = _drawn_signature(row[0])
+            drawn[side].append(signature)
+            expected = _expected_signature(names[side][index])
+            if expected is None:
+                errors.append(f"association : symbole sans signature attendue ({names[side][index]!r}, {where})")
+            elif not _same_signature(signature, expected):
+                errors.append(f"association : tracé différent du symbole {names[side][index]!r} "
+                              f"attendu ({where})")
     extra = _extra_drawings(answer, interior)
-    if len(extra) != len(pairs):
-        return [f"association : {len(pairs)} liens attendus, {len(extra)} trouvé(s)"]
+    if len(extra) != count:
+        return errors + [f"association : {count} liens attendus, {len(extra)} trouvé(s)"]
     links = []
     for drawing in extra:
         vertices = _line_vertices(drawing)
         if vertices is None or len(vertices) != 2:
-            return ["association : lien de solution qui n'est pas un segment droit"]
-        links.append(vertices)
-    left_x, right_x = {round(v[0][0], 1) for v in links}, {round(v[1][0], 1) for v in links}
-    if len(left_x) != 1 or len(right_x) != 1 or min(right_x) <= max(left_x):
-        return ["association : liens non issus de deux colonnes distinctes"]
-    left_rows = sorted({round(v[0][1], 1) for v in links})
-    right_rows = sorted({round(v[1][1], 1) for v in links})
-    if len(left_rows) != len(pairs) or len(right_rows) != len(pairs):
-        return ["association : points d'ancrage non distincts"]
-    drawn = sorted((left_rows.index(round(v[0][1], 1)), right_rows.index(round(v[1][1], 1))) for v in links)
-    if drawn != sorted(enumerate(pairs)):
-        return ["association : liens du corrigé différents des paires de l'activité"]
-    return []
+            return errors + ["association : lien de solution qui n'est pas un segment droit"]
+        ends = []
+        for side, point in (("gauche", vertices[0]), ("droite", vertices[1])):
+            hits = [k for k, (ax, ay) in enumerate(anchors[side])
+                    if abs(ax - point[0]) <= 1.0 and abs(ay - point[1]) <= 1.0]
+            ends.append(hits[0] if len(hits) == 1 else None)
+        if None in ends:
+            return errors + ["association : un lien du corrigé ne part pas des points d'ancrage dessinés"]
+        links.append((ends[0], ends[1]))
+    if sorted(links) != sorted(enumerate(pairs)):
+        errors.append("association : liens du corrigé différents des paires de l'activité")
+    for left, right in links:
+        a, b = drawn["gauche"][left], drawn["droite"][right]
+        if a is not None and b is not None and not _same_signature(a, b):
+            errors.append(f"association : lien entre deux symboles différents (ligne {left + 1} → {right + 1})")
+    return errors
 
 
 _COHERENCE = {"maze": _maze_coherence, "connect_dots": _dots_coherence, "match": _match_coherence}
@@ -287,13 +425,15 @@ def _norm(text: str) -> str:
 
 
 def _pdf_checks(checks: _Checks, spec_set: SpecSet, activities: tuple[Activity, ...],
-                interior_path: Path, answer_path: Path) -> None:
+                interior_path: Path | bytes, answer_path: Path | bytes) -> None:
     width, height = spec_set.trim[0] * 72, spec_set.trim[1] * 72
     docs = {}
     try:
-        for kind, path in (("interior", interior_path), ("answer_key", answer_path)):
-            docs[kind] = fitz.open(path)
-    except Exception as exc:  # unreadable or malformed PDF
+        for kind, source in (("interior", interior_path), ("answer_key", answer_path)):
+            data = (bytes(source) if isinstance(source, (bytes, bytearray))
+                    else read_bounded(source, MAX_PDF_BYTES, label=f"PDF {kind}"))
+            docs[kind] = fitz.open(stream=data, filetype="pdf")
+    except Exception as exc:  # unreadable, oversized or malformed PDF
         for doc in docs.values():
             doc.close()
         checks.expect("pdf.readable", False, f"PDF illisible : {exc}")
@@ -363,7 +503,8 @@ def _pdf_checks(checks: _Checks, spec_set: SpecSet, activities: tuple[Activity, 
 
 
 def content_checks(spec_set: SpecSet, activities: tuple[Activity, ...],
-                   interior_path: Path, answer_path: Path) -> list[dict[str, str]]:
+                   interior_path: Path | bytes, answer_path: Path | bytes) -> list[dict[str, str]]:
+    """Analyse the two PDFs (given as paths read with a size ceiling, or as bytes)."""
     checks = _Checks()
     for activity in activities:
         checks.expect_all("activity.solution_verified",
@@ -385,6 +526,7 @@ def build_report(spec_set: SpecSet, activities: tuple[Activity, ...],
         "gates": dict(GATES),
         "human_validations_recorded": HUMAN_VALIDATIONS_RECORDED,
         "engine_version": __version__,
+        "pdf_creation_epoch": CANONICAL_PDF_EPOCH,
         "spec_id": spec_set.spec_id,
         "source_sha256": spec_set.source_sha256,
         "seed": spec_set.seed,
@@ -404,6 +546,8 @@ def build_manifest(spec_set: SpecSet, file_hashes: dict[str, str]) -> dict[str, 
         "ready_for_kdp": READY_FOR_KDP,
         "gates": dict(GATES),
         "engine_version": __version__,
+        "pdf_creation_epoch": CANONICAL_PDF_EPOCH,
+        "pdf_render_isolation": "child process; SOURCE_DATE_EPOCH fixed; RL_* removed",
         "spec_id": spec_set.spec_id,
         "seed": spec_set.seed,
         "page_count": len(spec_set.pages),
@@ -446,11 +590,34 @@ def audit_package(out_dir: Path, spec_set: SpecSet, activities: tuple[Activity, 
         return [f"répertoire d'audit non sûr : {exc}"]
 
 
+def package_limit(name: str) -> int:
+    if name in (INTERIOR_NAME, ANSWER_NAME):
+        return MAX_PDF_BYTES
+    return MAX_SOURCE_BYTES if name == SOURCE_NAME else MAX_JSON_BYTES
+
+
+def _pdf_date_errors(name: str, data: bytes) -> list[str]:
+    try:
+        with fitz.open(stream=data, filetype="pdf") as doc:
+            meta = doc.metadata or {}
+    except Exception as exc:
+        return [f"{name} : métadonnées illisibles ({type(exc).__name__})"]
+    return [f"{name} : {key} {meta.get(key)!r} différente de la date canonique {CANONICAL_PDF_DATE!r}"
+            for key in ("creationDate", "modDate") if meta.get(key) != CANONICAL_PDF_DATE]
+
+
 def _audit_anchored(root: Path, spec_set: SpecSet, activities: tuple[Activity, ...]) -> list[str]:
     errors = _inventory_errors(root)
     if errors:
         return errors
-    data = {name: (root / name).read_bytes() for name in PACKAGE_FILES}
+    data: dict[str, bytes] = {}
+    for name in PACKAGE_FILES:  # every read is bounded and checked on the opened descriptor
+        try:
+            data[name] = read_bounded(root / name, package_limit(name), label=name)
+        except EngineError as exc:
+            errors.append(str(exc))
+    if errors:
+        return errors
     # Manifest: exact content, relative paths, hashes of every other file.
     expected_manifest = canonical_json_bytes(build_manifest(spec_set, {
         name: sha256_hex(content) for name, content in data.items() if name != MANIFEST_NAME}))
@@ -460,16 +627,21 @@ def _audit_anchored(root: Path, spec_set: SpecSet, activities: tuple[Activity, .
         errors.append("sources/spec.json : différent de la source auditée")
     if data[ACTIVITIES_NAME] != canonical_json_bytes([a.as_dict() for a in activities]):
         errors.append("activities.json : différent des activités régénérées depuis la source")
-    # Independent replay: byte-for-byte identical PDFs from the same source.
+    for name in (INTERIOR_NAME, ANSWER_NAME):
+        errors.extend(_pdf_date_errors(name, data[name]))
+    # Independent replay (isolated render process): byte-for-byte identical PDFs.
     with tempfile.TemporaryDirectory(prefix="lafractale-engine-qa-") as scratch:
         try:
             interior, answer = render_slice(spec_set, activities, Path(scratch))
+            replays = {INTERIOR_NAME: read_bounded(interior, MAX_PDF_BYTES, label="rejeu"),
+                       ANSWER_NAME: read_bounded(answer, MAX_PDF_BYTES, label="rejeu")}
         except EngineError as exc:
             return errors + [f"rejeu du rendu impossible : {exc}"]
-        for name, replay in ((INTERIOR_NAME, interior), (ANSWER_NAME, answer)):
-            if data[name] != replay.read_bytes():
-                errors.append(f"{name} : différent du rendu régénéré depuis la source")
-        checks = content_checks(spec_set, activities, root / INTERIOR_NAME, root / ANSWER_NAME)
+    for name, replay in replays.items():
+        if data[name] != replay:
+            errors.append(f"{name} : différent du rendu régénéré depuis la source")
+    # The analysed PDFs are exactly the bytes that were hashed and compared above.
+    checks = content_checks(spec_set, activities, data[INTERIOR_NAME], data[ANSWER_NAME])
     errors.extend(f"{c['id']} : {c['detail']}" for c in checks if c["status"] == "FAIL")
     if data[REPORT_NAME] != canonical_json_bytes(build_report(spec_set, activities, checks)):
         errors.append("quality_report.json : différent du rapport recalculé")
