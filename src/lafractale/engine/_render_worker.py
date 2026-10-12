@@ -15,7 +15,8 @@ sys.modules["reportlab_settings"] = types.ModuleType("reportlab_settings")
 import os  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from lafractale.engine.render import (MAX_JOB_BYTES, activity_from_dict,  # noqa: E402
+from lafractale.engine.contracts import canonical_json_bytes  # noqa: E402
+from lafractale.engine.render import (FONTS_MARKER, MAX_JOB_BYTES, activity_from_dict,  # noqa: E402
                                       environment_is_canonical, write_pdfs_here)
 from lafractale.security.strict_json import loads_strict  # noqa: E402
 
@@ -35,7 +36,8 @@ def main(argv: list[str]) -> int:
         if not isinstance(job, dict) or set(job) != {"book", "activities"}:
             raise ValueError("job de rendu mal formé")
         activities = [activity_from_dict(item) for item in job["activities"]]
-        write_pdfs_here(job["book"], activities, Path(argv[0]))
+        fonts = write_pdfs_here(job["book"], activities, Path(argv[0]))
+        print(FONTS_MARKER, canonical_json_bytes(fonts).decode("utf-8").replace("\n", ""), flush=True)
     except Exception as exc:  # any refusal is reported on one parsable line
         print(f"RENDU_REFUSE: {type(exc).__name__}: {exc}"[:600].replace("\n", " "), file=sys.stderr)
         return 2

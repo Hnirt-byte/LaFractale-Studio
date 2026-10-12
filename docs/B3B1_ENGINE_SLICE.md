@@ -1,5 +1,7 @@
 # B3-B.1 — Tranche verticale du moteur (fixtures synthétiques uniquement)
 
+> **B3-B.1.1** (fiabilisation ciblée, issue #12) : ancre stricte, détection du masquage des symboles, traçabilité des polices, dépendances `--user`. Aucune fonctionnalité nouvelle ; voir les sections correspondantes.
+
 ```text
 kind                  = SYNTHETIC_NON_PRODUCTION
 ready_for_kdp         = false
@@ -115,8 +117,34 @@ différentes**. Une permutation simultanée des deux colonnes (cohérente dans l
 les signatures sont comparées aux noms de l'activité régénérée, pas seulement entre elles. Les familles
 sans signature connue (`hat_*`, `gift_*`) sont refusées (fail-closed).
 
+**Ancre (B3-B.1.1).** Un tracé n'est une ancre que s'il réunit *toutes* les propriétés du rendu historique :
+remplissage seul (`type` `f`), 4 courbes, **largeur ET hauteur 6,8 pt (± 0,05)**, gris 0,11 (± 0,02), opacité 1.
+Une barre de 6,8 × 20 pt, un disque de 7,5 pt ou un carré de 6,8 pt de couleur différente ne sont donc plus
+exclus du contrôle « tracé inattendu » : ils sont signalés. Le nombre d'ancres par colonne et leur alignement
+ligne à ligne restent exigés.
+
+**Masquage des symboles (B3-B.1.1).** Pour la fiche *et* le corrigé, trois couches indépendantes, propres au
+rendu synthétique actuel (ce n'est pas une reconnaissance visuelle générique) :
+
+1. *ordre de peinture* : tout tracé peint **après** un symbole (`seqno` PyMuPDF) dont la boîte le recouvre —
+   aplat clair, 100 × 60 pt, coin partiel, trait blanc — est signalé ; seuls les ancres et les autres symboles
+   sont des voisins attendus ;
+2. *texte* : tout mot dont la boîte recouvre un symbole (y compris texte blanc ou invisible) ;
+3. *pixels* : la page est rastérisée (×2) et des points échantillonnés **sur le contour** de chaque symbole
+   (aux ¼, ½ et ¾ de chaque segment, courbe ou côté de rectangle) doivent tous être sombres (voisinage 3 × 3 px) ; cette couche voit aussi un rognage ou un masque
+   non modélisé par l'analyse structurelle.
+
+**Limites de ces contrôles (non exhaustifs).** Non détectés avec certitude : un recouvrement qui ne touche
+aucun point échantillonné *et* ne chevauche aucune boîte peinte après le symbole ; un recouvrement visuellement
+identique au symbole (même gris foncé) ; dégradés (*shadings*), modes de fusion, masques doux, qui ne sont
+pas modélisés (seule la couche pixels peut les voir) ; le champ `scissor` de PyMuPDF n'est pas exploité
+(rognage vu uniquement par les pixels). Les murs du labyrinthe et les points ne bénéficient pas de ces
+contrôles de masquage (ils sont vérifiés par leur géométrie dessinée). Toute image est refusée en bloc
+(`pdf.no_image`). Un échantillonnage de contour ne prouve pas l'absence de recouvrement entre deux
+échantillons. Un rendu signalé n'est jamais publié ; un rendu *non* signalé n'est pas garanti sans masquage.
+
 L'audit d'un paquet publié recalcule tout depuis la source : inventaire fermé, manifeste, `activities.json`,
-rapport, **date canonique des PDF** et **rejeu du rendu à l'octet**. Les PDF analysés sont exactement les
+rapport, **date canonique des PDF**, **polices** et **rejeu du rendu à l'octet**. Les PDF analysés sont exactement les
 octets lus, hachés et comparés au rejeu. `audit --spec` utilise une source indépendante ;
 sans `--spec`, `sources/spec.json` du paquet est utilisé (cohérence interne, pas authenticité).
 
@@ -149,8 +177,30 @@ du processus. Le rendu s'exécute donc dans un **processus enfant** (`engine/_re
 * ReportLab exécute aussi `reportlab_settings` (via `sys.path`) et `~/.reportlab_settings` (via `HOME`) : l'enfant reçoit
   un `HOME` vide (répertoire temporaire) et un module `reportlab_settings` vide en `sys.modules` avant tout import ;
 * le processus enfant refuse de s'exécuter sous un environnement non canonique ou si `~/.reportlab_settings` existe ;
-* `python -P` : le répertoire courant n'est pas ajouté à `sys.path` ; `PYTHONPATH` est rendu absolu, la
+* `python -P -s` : le répertoire courant n'est pas ajouté à `sys.path` ; `PYTHONPATH` est rendu absolu, la
   racine du paquet en cours d'exécution étant placée en tête (même code que le parent) ;
+* **dépendances `pip install --user` (B3-B.1.1)** : `-s` désactive tout traitement du user-site par l'enfant
+  (aucun fichier `.pth`, aucun `usercustomize`, donc aucun code exécuté depuis le HOME de l'appelant). Si — et
+  seulement si — le *parent* importe réellement depuis son répertoire user-site-packages (existant, présent dans
+  `sys.path`), ce répertoire est transmis à l'enfant comme **simple entrée `PYTHONPATH`**, placée après la racine du
+  paquet. L'enfant garde son `HOME` vide : aucune dépendance au HOME, aucun risque de configuration ReportLab
+  hostile. Vérifié **manuellement** de bout en bout (preuve non automatisée : elle exige un interpréteur système sans dépendances globales) : Python 3.11 système sans ReportLab global + dépendances installées dans un
+  user-site sous un HOME factice → sur le code B3-B.1 (`e56966b`) `Rendu refusé : ModuleNotFoundError: No module named 'reportlab'` ;
+  avec B3-B.1.1 la génération et l'audit réussissent, mêmes SHA-256 que dans un venv.
+  *Limite* : une installation **éditable** déclarée par un `.pth` du user-site n'est pas honorée par l'enfant
+  (la racine du paquet `lafractale` lui-même est, elle, toujours transmise). Les environnements virtuels
+  (`python -m venv`) restent la méthode recommandée ;
+* **polices (B3-B.1.1)** : l'enfant déclare, après le rendu, le nom de fichier (sans chemin) et le SHA-256 des
+  deux fichiers TrueType réellement enregistrés par le rendu historique (`regular`, `bold`), hachés avant *et*
+  après le rendu (un fichier modifié *pendant* le rendu est refusé ; un remplacement antérieur à son premier chargement par
+  ReportLab n'est rattrapé que par le rejeu de l'audit). Les liens symboliques sont suivis comme le fait ReportLab (le hachage porte sur le
+  fichier réellement lu, le nom enregistré est celui du chemin demandé). Seuls les **octets** comptent pour l'audit : le nom de fichier
+  est informatif (une copie renommée de la même police n'est pas un écart). Ils sont enregistrés dans `manifest.json`
+  et `quality_report.json` (clé `fonts`). L'audit valide ce format fermé, recalcule le manifeste et le rapport avec
+  les polices enregistrées, rejoue le rendu et **compare les polices du rejeu** : une autre police (par ex. via
+  `LAFRACTALE_FONT_PATH`) peut légitimement produire un autre PDF mais l'écart est *explicite et traçable* —
+  l'audit échoue avec un message « polices du rendu différentes de celles du paquet » (fichier + empreintes), et un
+  paquet généré avec une autre police s'audite avec succès là où la même police est disponible ;
 * la date canonique est tracée dans `manifest.json` et `quality_report.json` (`pdf_creation_epoch`), le mode
   d'isolation dans le manifeste ; l'audit vérifie les métadonnées de chaque PDF.
 
@@ -169,8 +219,8 @@ DejaVu des paquets Ubuntu du CI) pour `synthetic_slice_v1.json` :
 | `sources/spec.json` | `88e98de2eb9e3d33568ca394d37c9096bb59fbfaea2acbd6e47aa02f26b4c415` |
 | `interior_SYNTHETIC_NON_PRODUCTION.pdf` | `c9f614d810cbd7d164c761be84d7a5aa167546d9ae604774c439732e0776987d` |
 | `answer_key_SYNTHETIC_NON_PRODUCTION.pdf` | `640d7864593f3a910a22d48d3f22315c26def6055303983074b1dd90cf72461e` |
-| `quality_report.json` | `b009f3a5f3f9b86c3aa7d3382a8f01f9684881d3c213355651bf319b83e6a834` |
-| `manifest.json` | `161cb853b263715f4ce593ae94548771aae3025caa269bd2ab7ba069f7d51e7d` |
+| `quality_report.json` | `9184cf9c8877dd71c4f46faf30f1ed8112186cbb0ff205ec026fd0e67590cfaf` |
+| `manifest.json` | `67b963d7e27a0fe39694214d178617e02e222545f47be91fdcc8d40b40a6c5af` |
 
 Les deux premières sont toujours comparées par le test ; les quatre autres seulement si l'empreinte de
 l'environnement (versions ReportLab/PyMuPDF + SHA-256 des polices) correspond, sinon le test est ignoré avec
@@ -204,7 +254,17 @@ Codes de sortie : `0` succès, `2` refus (message explicite sur `stderr`).
 
 * Avertissement `pdf.fonts.base14_helvetica_reference` : le rendu historique référence Helvetica
   sans l'intégrer (corrigé seulement par le chemin C4). Signalé en `WARN`, non corrigé ici.
-* La QA repère les points par le rayon de 4,1 pt du rendu historique (cases `8,2 pt`), les murs par leur épaisseur de 3 pt et les symboles d'association par leur trait de 2,6 pt et leurs ancres de 6,8 pt : si le rendu change, elle échoue (fail-closed) au lieu de passer à tort.
+* La QA repère les points par le rayon de 4,1 pt du rendu historique (cases `8,2 pt`), les murs par leur épaisseur de 3 pt et les symboles d'association par leur trait de 2,6 pt et leurs ancres de 6,8 × 6,8 pt (gris 0,11, remplissage seul) : si le rendu change, elle échoue (fail-closed) au lieu de passer à tort.
+* **Masquage des symboles (B3-B.1.1)** : détection par ordre de peinture, texte et sondage de pixels — non
+  exhaustive (voir « Limites de ces contrôles ») ; les murs et les points ne sont pas couverts ; un
+  recouvrement indétectable par ces trois couches peut passer.
+* **Dépendances `--user` (B3-B.1.1)** : prises en charge par une entrée `PYTHONPATH` explicite (pas de
+  `.pth`, pas de `usercustomize`) ; une installation éditable déclarée par un `.pth` du user-site n'est pas honorée.
+  Recommandation : environnement virtuel. L'ordre de recherche de l'enfant est : racine du paquet, `PYTHONPATH` hérité, user-site
+  (comme dans un interpréteur normal). Le test qui compare l'effet de `-s` sur un `PYTHONUSERBASE` hérité est ignoré dans un venv
+  (user-site inactif) ; l'effet a été vérifié à la main avec le Python système (le `.pth` s'exécute sans `-s`, pas avec).
+* **Polices (B3-B.1.1)** : seuls le nom de fichier et le SHA-256 sont tracés ; le rejeu d'un audit avec une autre
+  police échoue de façon explicite (comportement voulu), il faut alors fournir les mêmes polices.
 * Chaque rendu démarre un processus Python (≈ 0,5 s) ; une génération en lance trois (construction, audit du staging, audit après publication).
 * Les octets dépendent des versions de ReportLab et des polices DejaVu (voir les empreintes de référence).
 * Pas de contrôle prépresse/KDP, pas de fonds perdus, pas de couverture, pas d'épreuve papier.
