@@ -1,0 +1,54 @@
+{
+  "schema": "lafractale-b3a4-preparation-v1",
+  "generated_at_utc": "2026-10-12T05:50:47Z",
+  "source_pr": 10,
+  "source_head": "41cb7e498eada05d97c5483e6a410cf9c3e7cff0",
+  "source_tree": "b2c3979a811ba52c099cf79eacc0515f88ac6fb5",
+  "authoritative_plan": "../b3a3/01_chemin_de_fer_scenario_B_56_pages.csv",
+  "active_activity_pages": 46,
+  "active_pages": [
+    3,
+    48
+  ],
+  "historical_proposals_archived": 47,
+  "answers": {
+    "count": 31,
+    "pages": [
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+    ],
+    "distribution": [
+      6,
+      5,
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  "lexicon_pairs": 18,
+  "creative_breathing_pages": [
+    42,
+    45,
+    47
+  ],
+  "statuses": {
+    "MAJOR-03": "OPEN",
+    "MAJOR-04": "OPEN",
+    "EDITORIAL": "PENDING",
+    "KDP": "FORBIDDEN",
+    "PRODUCTION_GENERATION": "FORBIDDEN"
+  },
+  "human_validations_recorded": 0,
+  "source_gaps": [
+    "opening copy p01-p02",
+    "solution copy/layout p49-p54",
+    "production copy p55",
+    "production copy p56"
+  ],
+  "drive_action": "NOT_AUTHORIZED_NOT_EXECUTED"
+}
