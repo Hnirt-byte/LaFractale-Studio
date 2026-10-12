@@ -263,7 +263,8 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
         errors.append("points : numéros affichés différents de 1..N")
     for label, page in (("fiche", interior), ("corrigé", answer)):
         hidden = _occlusion_errors(page, [d for d in page.get_drawings() if _is_dot(d)], scope="points",
-                                   subject="point", expected_later=_is_dot)
+                                   subject="point", expected_later=_is_dot,
+                                   sampler=_dot_samples)
         errors.extend(f"{message} [{label}]" for message in hidden.errors)
     numbers = [((w[0] + w[2]) / 2, (w[1] + w[3]) / 2, w[4]) for w in interior.get_text("words") if w[4].isdigit()]
     for n, (dx, dy) in enumerate(dots, start=1):
@@ -276,6 +277,8 @@ def _dots_coherence(activity: Activity, interior: Any, answer: Any) -> list[str]
 SYMBOL_STROKE = 2.6
 #: Stroke width of the maze walls.
 WALL_STROKE = 3.0
+#: Radius (pt) at which the interior of a 4.1 pt dot is probed.
+DOT_PROBE_RADIUS = 2.0
 ANCHOR_SIZE = 6.8
 #: A real anchor: a FILLED disc (4 Bezier curves, no stroke), exactly 6.8 x 6.8 pt, gray 0.11.
 ANCHOR_TOL = 0.05
@@ -422,13 +425,25 @@ def _wall_segments(page: Any) -> list[dict]:
     return segments
 
 
+def _dot_samples(drawing: dict) -> list[tuple[float, float]]:
+    """Points INSIDE a filled dot: its centre and four points at DOT_PROBE_RADIUS.
+
+    A dot is a small filled disc: the extreme points of its outline sit on anti-aliased pixels that
+    can read lighter than the probe threshold on a perfectly visible dot (false rejection).
+    """
+    cx, cy = _centre(drawing)
+    return [(cx, cy)] + [(cx + dx * DOT_PROBE_RADIUS, cy + dy * DOT_PROBE_RADIUS)
+                         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+
+
 def _occlusion_errors(page: Any, symbols: list[dict], *, expected_later: Any = None,
-                      scope: str = "association", subject: str = "symbole") -> Occlusion:
+                      scope: str = "association", subject: str = "symbole", sampler: Any = None) -> Occlusion:
     """Detect what could HIDE the symbols of a match page (scope: this synthetic render).
 
     The same three layers also protect the maze walls and the numbered dots (``scope`` and ``subject``
     name them in the messages); ``expected_later(drawing)`` says which drawings may legitimately be
-    painted after a target (default: row anchors and other symbols, for the match page).
+    painted after a target (default: row anchors and other symbols, for the match page) and
+    ``sampler(drawing)`` gives the points probed on the pixmap (default: the drawing's outline).
 
     Three independent layers, none of them exhaustive:
     1. paint order: a drawing painted AFTER a symbol whose box overlaps it (an opaque fill, a
@@ -465,7 +480,7 @@ def _occlusion_errors(page: Any, symbols: list[dict], *, expected_later: Any = N
 
     probes = 0
     for symbol in symbols:
-        samples = _outline_samples(symbol)
+        samples = (sampler or _outline_samples)(symbol)
         probes += len(samples)
         if not samples:  # fail-closed: a symbol the probe cannot sample is not verified
             errors.append(f"{scope} : {subject} sans contour échantillonnable (opérateur graphique non géré)")

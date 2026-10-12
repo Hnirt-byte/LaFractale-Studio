@@ -140,7 +140,9 @@ rendu synthétique actuel (ce n'est pas une reconnaissance visuelle générique)
 corrigé, à chaque *mur* (un segment = une cible, avec sa propre boîte et son rang de peinture) et à chaque point
 (8,2 pt). Voisins attendus peints après une cible : les autres murs, les autres points et, sur le corrigé, le
 tracé de solution. Un aplat, un trait blanc, un texte blanc ou un rognage par-dessus le labyrinthe ou les points
-est signalé (`labyrinthe : mur masqué…`, `points : point masqué…`).
+est signalé (`labyrinthe : mur masqué…`, `points : point masqué…`). La sonde de pixels d'un point regarde l'*intérieur* du disque (centre et 4 points à 2 pt du centre), pas son bord
+anti-aliasé ; celle d'un mur échantillonne son segment aux ¼, ½ et ¾ : un rognage qui ne couvrirait que 0–20 % ou
+30–45 % d'un mur n'est pas vu par cette seule couche.
 
 **Limites de ces contrôles (non exhaustifs).** Non détectés avec certitude : un recouvrement qui ne touche
 aucun point échantillonné *et* ne chevauche aucune boîte peinte après le symbole ; un recouvrement visuellement

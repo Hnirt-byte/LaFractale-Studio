@@ -5,7 +5,7 @@ Faults are injected in memory into the historical renderer; the repository code 
 import pytest
 
 import lafractale.layout.pdf as pdfmod
-from b3b1_support import FIXTURE, qa_failures
+from b3b1_support import FIXTURE, dumps, qa_failures, spec_dict
 from lafractale.engine.contracts import load_spec_set
 from lafractale.engine.pipeline import build_activities
 
@@ -53,6 +53,23 @@ def patch_wall_points(c, board):  # a white bar across the lower-left of the boa
 
 def test_nominal_render_is_not_rejected(case, tmp_path):
     assert detected(case, tmp_path) == ""
+
+
+@pytest.mark.parametrize("seed", [1, 2, 7, 42, 2026, 31337])
+@pytest.mark.parametrize("shape", ["star", "house", "moon"])
+def test_nominal_renders_are_not_rejected_whatever_the_seed_and_the_shape(tmp_path, seed, shape):
+    """Regression: the dot probe used to sit on the anti-aliased rim and rejected valid sheets (11/18 here)."""
+    data = spec_dict()
+    data["seed"] = seed
+    for page in data["pages"]:
+        if page["mechanic"] == "connect_dots":
+            page["params"]["shape"] = shape
+    source = tmp_path / "spec.json"
+    source.write_bytes(dumps(data))
+    spec = load_spec_set(source)
+    out = tmp_path / "out"
+    out.mkdir()
+    assert qa_failures(spec, build_activities(spec).activities, out) == {}
 
 
 @pytest.mark.parametrize("name,kind", [("_maze", "labyrinthe"), ("_dots", "points")])
