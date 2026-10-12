@@ -11,6 +11,10 @@
 
 # Changelog
 
+## [B3-B.2] - Lecteur en lecture seule du scénario B
+- Nouveau paquet isolé `lafractale.scenario_b` : analyse des sources B3-A.3/B3-A.4 actives, capacités réelles du moteur, blocages éditoriaux, rapport JSON/Markdown déterministe et synthèse des développements (voir `docs/B3B2_SCENARIO_B_READER.md`).
+- Aucun fichier éditorial, asset, générateur ou moteur de production modifié ; aucune génération PDF ; statuts permanents inchangés.
+
 ## [0.2.0b1, hotfix rollback pré-PR] - Préservation des sauvegardes sur double échec
 - Le dernier export valide n'est plus effacé lorsque publication et restauration échouent toutes deux : sauvegarde `.demo.previous-*` conservée et accessible via `PublicationRecoveryError.backup_path`.
 - Suppression de la sauvegarde uniquement après publication confirmée. Une restauration réussie replace l'ancienne démo sans destruction.
