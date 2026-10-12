@@ -2,6 +2,8 @@
 
 > **B3-B.1.1** (fiabilisation ciblée, issue #12) : ancre stricte, détection du masquage des symboles, traçabilité des polices, dépendances `--user`. Aucune fonctionnalité nouvelle ; voir les sections correspondantes.
 
+> **B3-B.1.2** (limites résiduelles de l'issue #12) : le contrôle de masquage couvre aussi les murs du labyrinthe et les points numérotés.
+
 ```text
 kind                  = SYNTHETIC_NON_PRODUCTION
 ready_for_kdp         = false
@@ -134,12 +136,19 @@ rendu synthétique actuel (ce n'est pas une reconnaissance visuelle générique)
    (aux ¼, ½ et ¾ de chaque segment, courbe ou côté de rectangle) doivent tous être sombres (voisinage 3 × 3 px) ; cette couche voit aussi un rognage ou un masque
    non modélisé par l'analyse structurelle.
 
+**Murs du labyrinthe et points numérotés (B3-B.1.2).** Les trois mêmes couches s'appliquent, sur la fiche et le
+corrigé, à chaque *mur* (un segment = une cible, avec sa propre boîte et son rang de peinture) et à chaque point
+(8,2 pt). Voisins attendus peints après une cible : les autres murs, les autres points et, sur le corrigé, le
+tracé de solution. Un aplat, un trait blanc, un texte blanc ou un rognage par-dessus le labyrinthe ou les points
+est signalé (`labyrinthe : mur masqué…`, `points : point masqué…`). La sonde de pixels d'un point regarde l'*intérieur* du disque (centre et 4 points à 2 pt du centre), pas son bord
+anti-aliasé ; celle d'un mur échantillonne son segment aux ¼, ½ et ¾ : un rognage qui ne couvrirait que 0–20 % ou
+30–45 % d'un mur n'est pas vu par cette seule couche.
+
 **Limites de ces contrôles (non exhaustifs).** Non détectés avec certitude : un recouvrement qui ne touche
 aucun point échantillonné *et* ne chevauche aucune boîte peinte après le symbole ; un recouvrement visuellement
 identique au symbole (même gris foncé) ; dégradés (*shadings*), modes de fusion, masques doux, qui ne sont
 pas modélisés (seule la couche pixels peut les voir) ; le champ `scissor` de PyMuPDF n'est pas exploité
-(rognage vu uniquement par les pixels). Les murs du labyrinthe et les points ne bénéficient pas de ces
-contrôles de masquage (ils sont vérifiés par leur géométrie dessinée). Toute image est refusée en bloc
+(rognage vu uniquement par les pixels). Toute image est refusée en bloc
 (`pdf.no_image`). Un échantillonnage de contour ne prouve pas l'absence de recouvrement entre deux
 échantillons. Un rendu signalé n'est jamais publié ; un rendu *non* signalé n'est pas garanti sans masquage.
 
