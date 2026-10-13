@@ -11,6 +11,7 @@ OUT = ROOT / "books/halloween_2026/pages.csv"
 
 CHEMIN = {"maze", "connect_dots", "trace_paths", "path_logic"}
 C4_LOCKED = {4, 6, 20}
+ILLUSTRE = {4, 5, 13, 20}  # pages pilotes (voir assets_manifest.yaml)
 HUMAN_REVIEW = {17, 22, 37, 43, 44, 45, 46, 48}
 # Paramètres PROVISOIRES (non validés) des pages du gabarit CHEMIN.
 PARAMS = {
@@ -36,7 +37,7 @@ def main() -> int:
         kind = p["final_type"]
         rows.append({
             "page": page, "type": kind,
-            "gabarit": "chemin" if kind in CHEMIN else "provisoire",
+            "gabarit": "illustre" if page in ILLUSTRE else ("chemin" if kind in CHEMIN else "provisoire"),
             "title": (t or p)["final_title"],
             "prompt_fr": t["final_fr"] if t else "", "prompt_en": t["final_en"] if t else "",
             "answer_page": t["answer_page"] if t else "",

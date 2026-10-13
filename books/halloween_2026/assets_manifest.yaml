@@ -1,0 +1,65 @@
+# Manifeste d'assets graphiques (chaîne hybride).
+# Python garde géométrie, consignes, réponses et pagination ; les PNG fournis (ChatGPT) n'apportent que l'habillage
+# (role: decorative) ou la peau d'objets que Python place et compte lui-même (role: exercise).
+# Remplacer une illustration = réimporter un PNG avec le même id : `python -m lafractale assets import fichier.png`.
+style_prompt: >-
+  Black and white coloring-book line art for children aged 4 to 5, in the exact style of the mascot Pip (a cute round
+  ghost with big glossy eyes, small hatched blush marks, simple smooth shapes). Thick, uniform, clean black outline
+  (about 6 px at 1254 px wide), rounded line ends, large open white areas to color, minimal inner detail. Pure white
+  background, pure black lines only: no grey, no shading, no gradients, no fills, no texture, no text, no letters,
+  no numbers, no watermark, no border. Friendly and expressive Halloween mood, never scary. Single clear subject
+  centered with generous white margin.
+assets_dir: assets/illustrations/halloween_2026/pilotes
+style_refs: [pip-reference-nb-v1, pip-accueil-v1]
+
+assets:
+  # kind: object = objet isolé (import en PNG transparent) ; scene = PNG fond blanc pleine scène.
+  - {id: pip-indication-v1, kind: object, role: decorative, file: assets/illustrations/halloween_2026/pip/pip-indication-v1.png, fixed: true}
+  - {id: p04_maison_hantee, kind: object, role: decorative, size_px: [1254, 1254], min_px: 600,
+     prompt: "A small cozy haunted house with a crooked roof, a round window with a friendly face, a glowing open front door and a tiny pumpkin on the step."}
+  - {id: p04_bordure_chauves_souris, kind: object, role: decorative, size_px: [2400, 400], min_px: 1200,
+     prompt: "A wide horizontal banner frieze: five smiling little bats flying with small stars and a crescent moon between them, lots of white space."}
+  - {id: p05_jardin_scene, kind: scene, role: decorative, size_px: [2200, 1500], min_px: 1200,
+     prompt: "A moonlit garden at night seen from the front: a low wooden fence, round bushes, three round gravestones with simple rounded tops, two big pumpkins, a bare tree on each side and a big crescent moon. Many open spots to hide small animals. NO cats, NO bats, no animals at all."}
+  - {id: sprite_chat, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A cute cat sitting upright, seen from the front, tail curled, big round eyes. Outline only (not filled black)."}
+  - {id: sprite_chauve_souris, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A cute smiling bat with wings fully spread, seen from the front, big round eyes."}
+  - {id: p13_foret_nuit, kind: scene, role: decorative, size_px: [2200, 1500], min_px: 1200,
+     prompt: "A soft magical night forest: five big rounded trees with smiling hollows, a huge full moon with a friendly face, a small owl on a branch, tiny stars, mushrooms and Pip the ghost waving in the lower left. Very large areas to color, simple shapes."}
+  - {id: chapeau_sorciere, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A classic witch hat, tall and slightly bent, with a wide brim and a big buckle on the band. Object only, no face, no head."}
+  - {id: chapeau_citrouille, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A hat shaped like a small pumpkin with a stem on top and a smiling carved face, with a thin brim. Object only."}
+  - {id: chapeau_fete, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A pointed party hat with three round stars on it and a pom-pom on top. Object only."}
+  - {id: chapeau_chauve_souris, kind: object, role: exercise, size_px: [1254, 1254], min_px: 400,
+     prompt: "A round cap with two bat wings on the sides and two small pointed ears on top. Object only."}
+  - {id: p20_lune_deco, kind: object, role: decorative, size_px: [1254, 1254], min_px: 400,
+     prompt: "A smiling crescent moon with three small stars around it."}
+
+# Pages pilotes. Zones : header | board_left | board_right | board_top_center | scene.
+# Un décor ne peut jamais recouvrir la zone de l'exercice (vérifié) ; les objets role=exercise sont placés par Python.
+pages:
+  4:
+    activity: maze_c4            # labyrinthe canonique C4, inchangé
+    decor:
+      - {asset: p04_bordure_chauves_souris, zone: header}
+      - {asset: pip-indication-v1, zone: board_left, anchor: bottom, size_pt: 120}
+      - {asset: p04_maison_hantee, zone: board_right, anchor: top, size_pt: 130}
+  5:
+    activity: find_count         # PARAMÈTRES PROVISOIRES : nombre de cibles à valider
+    targets: {cat: 3, bat: 4}
+    target_assets: {cat: sprite_chat, bat: sprite_chauve_souris}
+    target_labels: {cat: Chats, bat: Chauves-souris}
+    decor:
+      - {asset: p05_jardin_scene, zone: scene}
+  13:
+    activity: coloring_scene     # page à colorier : aucune règle, aucun corrigé
+    decor:
+      - {asset: p13_foret_nuit, zone: scene}
+  20:
+    activity: match_c4           # chapeaux jumeaux canoniques C4 ; les images ne font que « habiller » les 4 symboles
+    symbol_assets: {hat_circle: chapeau_sorciere, hat_star: chapeau_fete, hat_triangle: chapeau_citrouille, hat_diamond: chapeau_chauve_souris}
+    decor:
+      - {asset: p20_lune_deco, zone: board_top_center, size_pt: 70}

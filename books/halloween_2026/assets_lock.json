@@ -1,0 +1,79 @@
+{
+ "chapeau_chauve_souris": {
+  "height": 775,
+  "mode": "RGBA",
+  "sha256": "b7af181793bf364f7ea8af5fbc1c4d498575b45e0d8d7b4e30306e2dc39e8d08",
+  "version": 1,
+  "width": 1235
+ },
+ "chapeau_citrouille": {
+  "height": 1011,
+  "mode": "RGBA",
+  "sha256": "5bc1a0691feef55ddc8b618719030b2c5329a3eea2c8698f0044f25a445703a4",
+  "version": 1,
+  "width": 1231
+ },
+ "chapeau_fete": {
+  "height": 1211,
+  "mode": "RGBA",
+  "sha256": "0d9748a4789fff1204d80309a82b3f7bc41e9668201277208b66f1d525aaa5ef",
+  "version": 1,
+  "width": 844
+ },
+ "chapeau_sorciere": {
+  "height": 1114,
+  "mode": "RGBA",
+  "sha256": "e105c100030932c95b6f6823900dc553c03f0fa42e3fb2b031f9ee7f7df8cb3b",
+  "version": 1,
+  "width": 1242
+ },
+ "p04_bordure_chauves_souris": {
+  "height": 400,
+  "mode": "RGBA",
+  "sha256": "803b381e8bb7fedc57c84d4bdf1c0f305510b129b45f5e94113e7a2432c5b27e",
+  "version": 1,
+  "width": 2014
+ },
+ "p04_maison_hantee": {
+  "height": 1237,
+  "mode": "RGBA",
+  "sha256": "54fa504752634b509e5305eb365e5f1108915e291354be332d673147c328afe1",
+  "version": 1,
+  "width": 1148
+ },
+ "p05_jardin_scene": {
+  "height": 1500,
+  "mode": "L",
+  "sha256": "c46d13ebecea7097f2c8827ef26715a82598f873ff266b54f5be6abca7c0b950",
+  "version": 1,
+  "width": 2200
+ },
+ "p13_foret_nuit": {
+  "height": 1500,
+  "mode": "L",
+  "sha256": "208d302297c146fb46480ab4b58300d42abd205951193ff958d5393148f96f61",
+  "version": 1,
+  "width": 2200
+ },
+ "p20_lune_deco": {
+  "height": 1165,
+  "mode": "RGBA",
+  "sha256": "8e61fa656c6feecabf95d82a9f2d2bdd3d5b3928a2fa210f77c99fbe77aa49b0",
+  "version": 1,
+  "width": 1110
+ },
+ "sprite_chat": {
+  "height": 1188,
+  "mode": "RGBA",
+  "sha256": "090b0c00eb1359ef8aba048484ee808d8840e5a4d8534c89fd101a0247199093",
+  "version": 1,
+  "width": 1049
+ },
+ "sprite_chauve_souris": {
+  "height": 840,
+  "mode": "RGBA",
+  "sha256": "cfe2fbfdc87526f05f8076d4d7f9ab5b0b162ae2647bf77f5df579de157422b2",
+  "version": 1,
+  "width": 1254
+ }
+}

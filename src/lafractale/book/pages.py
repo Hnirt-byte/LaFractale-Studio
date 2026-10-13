@@ -71,7 +71,7 @@ def check_pages(rows: list[PageRow]) -> None:
         raise BookError(f"répartition des corrigés {dict(sorted(counts.items()))} "
                         f"différente de la répartition canonique {ANSWER_PAGES}")
     for r in rows:
-        if r.gabarit not in ("chemin", "provisoire"):
+        if r.gabarit not in ("chemin", "illustre", "provisoire"):
             raise BookError(f"page {r.page} : gabarit inconnu {r.gabarit!r}")
-        if r.gabarit == "provisoire" and r.type in ("maze", "connect_dots") and r.page in (4, 6):
-            raise BookError(f"page {r.page} : page C4 verrouillée, gabarit chemin obligatoire")
+        if r.gabarit == "provisoire" and r.page in (4, 6, 20):
+            raise BookError(f"page {r.page} : page C4 verrouillée, pas de gabarit provisoire")
