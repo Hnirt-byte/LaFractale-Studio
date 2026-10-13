@@ -36,8 +36,46 @@ def main(argv: list[str] | None = None) -> int:
     p_prev.add_argument("--out",type=Path,default=Path("dist/book_preview"))
     p_prev.add_argument("--seed",type=int,default=2026)
     p_prev.add_argument("--overwrite",action="store_true",help="Remplacer explicitement un aperçu existant")
+    p_assets=subs.add_parser("assets",help="Illustrations : liste, import/remplacement de PNG")
+    p_assets.add_argument("action",choices=("list","import"))
+    p_assets.add_argument("files",nargs="*",type=Path,help="PNG à importer (nom du fichier = id de l'asset)")
+    p_assets.add_argument("--id",help="id de l'asset si le nom du fichier ne le donne pas")
+    p_assets.add_argument("--book-dir",type=Path,default=Path("books/halloween_2026"))
+    p_pil=subs.add_parser("pilots",help="Aperçu PDF/PNG des pages pilotes illustrées")
+    p_pil.add_argument("book_dir",type=Path)
+    p_pil.add_argument("--out",type=Path,default=Path("dist/pilots"))
+    p_pil.add_argument("--pages",default="4,5,13,20")
+    p_pil.add_argument("--overwrite",action="store_true")
     args=parser.parse_args(argv)
     try:
+        if args.cmd in ("assets","pilots"):
+            from lafractale.book.pages import BookError
+            from lafractale.book import assets as A
+            try:
+                if args.cmd=="pilots":
+                    from lafractale.book.preview import build_preview
+                    s=build_preview(args.book_dir,args.out,overwrite=args.overwrite,
+                                    only=tuple(int(p) for p in args.pages.split(",")))
+                    missing=[i for i in s["assets"] if i["status"]=="ASSET_MANQUANT"]
+                    print(f"PILOTES CRÉÉS : {args.out} | {s['pages']} pages | {len(missing)} ASSET_MANQUANT | "
+                          "NON DESTINÉ À LA PUBLICATION")
+                    return 0
+                root=args.book_dir.resolve().parents[1]
+                man=A.load_manifest(args.book_dir/"assets_manifest.yaml",root)
+                if args.action=="list":
+                    for row in A.status_rows(man):
+                        print("  ".join(row))
+                    return 0
+                if not args.files:
+                    raise BookError("indiquer au moins un PNG à importer")
+                if args.id and len(args.files)!=1:
+                    raise BookError("--id n'accepte qu'un seul fichier")
+                for f in args.files:
+                    r=A.import_png(man,args.id or f.stem,f)
+                    print(f"IMPORTÉ {r['asset']} v{r['version']} ({r['width']}x{r['height']}, {r['mode']})")
+                return 0
+            except BookError as exc:
+                raise ConfigError(str(exc)) from exc
         if args.cmd=="preview":
             from lafractale.book.pages import BookError
             from lafractale.book.preview import build_preview

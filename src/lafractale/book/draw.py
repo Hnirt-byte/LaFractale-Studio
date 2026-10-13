@@ -12,6 +12,7 @@ from reportlab.pdfgen import canvas
 
 from lafractale.activities.engine import generate, stable_seed
 from lafractale.activities.models import Activity, ActivitySpec
+from lafractale.book.assets import AssetStore, load_manifest
 from lafractale.book.pages import BookError, PageRow
 from lafractale.editorial import _MOON_8, EDITORIAL_HALLOWEEN_V1, editorial_spec
 from lafractale.layout.composition import PageComposition, Rect, compose_page
@@ -40,6 +41,10 @@ class Context:
         self.regular, self.bold = fonts()
         self.editorial = editorial_spec(EDITORIAL_HALLOWEEN_V1)
         self.small_en: list[int] = []
+        self.answers: dict[int, dict] = {}  # réponses calculées par Python pour les pages illustrées
+        manifest_path = repo_root / "books/halloween_2026/assets_manifest.yaml"
+        self.manifest = load_manifest(manifest_path, repo_root)
+        self.store = AssetStore(self.manifest)
         self._pip: dict[str, bytes] = {}
         approvals = json.loads((repo_root / "assets/illustrations/approvals.json").read_text(encoding="utf-8"))
         for item in approvals["illustrations"]:
@@ -74,8 +79,11 @@ def _layout(act: Activity, ctx: Context, total: int) -> PageComposition:
         return layout
 
 
+PILOT_NOTE = WATERMARK + "  |  PAGE PILOTE — PARAMÈTRES ET ILLUSTRATIONS À VALIDER"
+
+
 def _shell(c: canvas.Canvas, layout: PageComposition, row: PageRow, ctx: Context, total: int,
-           board_label: str) -> None:
+           board_label: str, *, title: bool = True, slot_pip: bool = True, note: str | None = None) -> None:
     header, slot = layout.header, layout.companion_slot
     c.setFillGray(1)
     c.setStrokeGray(.58)
@@ -83,13 +91,14 @@ def _shell(c: canvas.Canvas, layout: PageComposition, row: PageRow, ctx: Context
     c.roundRect(header.x, header.y, header.width, header.height, 14, fill=1, stroke=1)
     c.setFillGray(.12)
     c.roundRect(header.x, header.y, 9, header.height, 4, fill=1, stroke=0)
-    _draw_text(c, layout.title)
+    if title:
+        _draw_text(c, layout.title)
     c.setFillGray(1)
     c.setStrokeGray(.38)
     c.roundRect(header.right - 145, header.y + 13, 130, 41, 13, stroke=1, fill=1)
     _draw_text(c, layout.page_label)
     _draw_text(c, layout.scene)
-    pip = ctx.pip(row.pip_pose)
+    pip = ctx.pip(row.pip_pose) if slot_pip else None
     if pip is not None:
         side = slot.height - 4
         c.drawImage(ImageReader(BytesIO(pip)), slot.x + (slot.width - side) / 2, slot.y + 2,
@@ -101,7 +110,7 @@ def _shell(c: canvas.Canvas, layout: PageComposition, row: PageRow, ctx: Context
     c.line(layout.footer.x, layout.footer.top - 1, layout.footer.right, layout.footer.top - 1)
     c.setFillGray(.28)
     c.setFont(ctx.regular, 8)
-    note = WATERMARK + ("  |  PAGE PROVISOIRE" if row.gabarit == "provisoire" else
+    note = note or WATERMARK + ("  |  PAGE PROVISOIRE" if row.gabarit == "provisoire" else
                         "  |  PARAMÈTRES PROVISOIRES NON VALIDÉS" if row.status != "C4_LOCKED" else "")
     c.drawString(layout.footer.x + 2, layout.footer.y + 15, note)
     c.drawRightString(layout.footer.right - 2, layout.footer.y + 15, f"{row.page}/{total}")
@@ -319,6 +328,10 @@ def _provisional(c: canvas.Canvas, row: PageRow, ctx: Context, board: Rect) -> N
 
 def draw_page(c: canvas.Canvas, row: PageRow, ctx: Context) -> None:
     total = len(ctx.rows)
+    if row.gabarit == "illustre":
+        from lafractale.book.illustrated import draw_illustrated
+        draw_illustrated(c, row, ctx)
+        return
     if row.gabarit == "provisoire":
         fr = row.prompt_fr or "[provisoire] Texte à venir"
         en = row.prompt_en or "[provisional] Text to come"

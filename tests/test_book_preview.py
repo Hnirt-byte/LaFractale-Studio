@@ -11,7 +11,8 @@ from lafractale.book.preview import build_preview
 from lafractale.editorial import _PROMPT_CONNECT_EN, _PROMPT_CONNECT_FR
 
 BOOK = Path(__file__).resolve().parents[1] / "books/halloween_2026"
-CHEMIN_PAGES = {4, 6, 9, 14, 17, 19, 22, 25, 29, 34, 38, 43}
+CHEMIN_PAGES = {6, 9, 14, 17, 19, 22, 25, 29, 34, 38, 43}
+ILLUSTRE_PAGES = {4, 5, 13, 20}
 
 
 @pytest.fixture(scope="module")
@@ -24,6 +25,7 @@ def test_pages_csv_is_the_scenario_b_book():
     rows = load_pages(BOOK / "pages.csv")
     assert [r.page for r in rows] == list(range(1, 57))
     assert {r.page for r in rows if r.gabarit == "chemin"} == CHEMIN_PAGES
+    assert {r.page for r in rows if r.gabarit == "illustre"} == ILLUSTRE_PAGES
     by = {r.page: r for r in rows}
     assert {p for p, r in by.items() if r.status == "C4_LOCKED"} == {4, 6, 20}
     assert (by[6].prompt_fr, by[6].prompt_en) == (_PROMPT_CONNECT_FR, _PROMPT_CONNECT_EN)
@@ -47,13 +49,14 @@ def test_pdf_has_exactly_56_pages_with_text_and_watermark(preview):
     out, summary = preview
     doc = fitz.open(out / "book_preview.pdf")
     assert doc.page_count == 56
-    assert summary["jouables"] == 12 and summary["provisoires"] == 44
+    assert (summary["jouables"], summary["illustrees"], summary["provisoires"]) == (11, 4, 41)
     for n in (4, 14, 22, 43):
         text = doc[n - 1].get_text()
         assert "APERÇU — NON DESTINÉ À LA PUBLICATION" in text
         assert f"FICHE {n:02d}" in text
     assert "Find a path through the maze with Pip!" in doc[3].get_text()
-    assert "PAGE PROVISOIRE" in doc[4].get_text()  # p.5 n'est pas présentée comme finalisée
+    assert "PAGE PROVISOIRE" in doc[1].get_text()  # p.2 n'est pas présentée comme finalisée
+    assert "ASSET_MANQUANT" in doc[4].get_text()  # p.5 pilote : image absente signalée
     assert "p.4 — Aide Pip à trouver la sortie" in doc[48].get_text()  # emplacement du corrigé p.4
 
 
