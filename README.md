@@ -22,6 +22,13 @@ Deux scénarios : `books/halloween_2026` (56 pages dans le chemin de fer initial
 Lire `START_HERE_PROMPT.md`, `MASTER_PROMPT.md`, `docs/ARCHITECTURE.md`, `docs/EDITORIAL_BIBLE.md`, `docs/QUALITY_GATES.md`, `docs/KDP_PREPRESS.md` et `docs/IMPLEMENTATION_V0.1.md` pour les exigences et les limites.
 
 
+## Aperçu du livre complet (56 pages)
+
+```bash
+python -m lafractale preview books/halloween_2026 --out dist/book_preview
+```
+Produit `book_preview.pdf` (56 pages, marqué « APERÇU — NON DESTINÉ À LA PUBLICATION »), `contact_sheet.png`, `pages/page_NNN.png` et `report.md`. Source : `books/halloween_2026/pages.csv` (scénario B, régénérable par `tools/import_scenario_b_pages.py` mais modifiable à la main). Les pages sans gabarit sont marquées « PAGE PROVISOIRE ». Un aperçu existant n'est jamais écrasé sans `--overwrite`. Feuille de route : `roadmap/audit_et_feuille_de_route_56p.md` (dossier projet).
+
 ## V0.2-B1 : composition graphique expérimentale
 
 La composition contrôlée sépare les zones de page de leur rendu PDF vectoriel : en-tête, scène, consignes FR/EN, espace de jeu et emplacement **vide** d'illustration à valider. La démo conserve trois mécaniques et leurs corrigés, avec vérification anti-débords et tests de rendu. Les personnages ne sont pas dessinés automatiquement : l'illustration de Pip reste **référence seulement** pour Halloween, Noël demeure sans compagnon.
