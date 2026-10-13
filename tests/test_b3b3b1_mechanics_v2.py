@@ -479,7 +479,7 @@ def test_no_api_accepts_page_records_or_editorial_objects():
 def test_nothing_historical_imports_v2():
     offenders = []
     for path in (ROOT / "src/lafractale").rglob("*.py"):
-        if "mechanics_v2" in path.parts:
+        if "mechanics_v2" in path.parts or "book" in path.parts:  # book/ : nouveau consommateur légitime (PR 1)
             continue
         if "mechanics_v2" in path.read_text(encoding="utf-8"):
             offenders.append(str(path.relative_to(ROOT)))

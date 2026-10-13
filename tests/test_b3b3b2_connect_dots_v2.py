@@ -753,7 +753,7 @@ def test_no_page_or_editorial_object_can_parametrise_a_generation():
 
 def test_nothing_historical_imports_v2_and_historical_registry_is_untouched():
     offenders = [str(p.relative_to(ROOT)) for p in (ROOT / "src/lafractale").rglob("*.py")
-                 if "mechanics_v2" not in p.parts and "mechanics_v2" in p.read_text(encoding="utf-8")]
+                 if "mechanics_v2" not in p.parts and "book" not in p.parts and "mechanics_v2" in p.read_text(encoding="utf-8")]
     assert offenders == []
     from lafractale.engine import registry as historical
     assert "connect_dots_v2" not in Path(historical.__file__).read_text(encoding="utf-8")
