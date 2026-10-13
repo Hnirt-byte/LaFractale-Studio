@@ -157,10 +157,10 @@ def test_open_mode_encodes_the_absent_closure_as_null():
     assert closed["solution"]["close_to"] == 1 and closed["measures"]["segment_count"] == 6
 
 
-def test_registry_is_closed_and_lists_both_mechanics():
-    assert set(MECHANICS_V2) == {"maze_v2", "connect_dots_v2"}
+def test_registry_is_closed_and_lists_the_three_mechanics():
+    assert set(MECHANICS_V2) == {"maze_v2", "connect_dots_v2", "match_v2"}
     with pytest.raises(TypeError):
-        MECHANICS_V2["match_v2"] = object()  # type: ignore[index]
+        MECHANICS_V2["match"] = object()  # type: ignore[index]
     assert verify_v2(make()) == [] and verify_v2(make().to_dict()) == []
 
 

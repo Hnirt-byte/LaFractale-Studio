@@ -1,4 +1,4 @@
-# B3-B.3b — Mécaniques v2 (B3-B.3b.1 : socle commun + `maze_v2` ; B3-B.3b.2 : `connect_dots_v2`)
+# B3-B.3b — Mécaniques v2 (B3-B.3b.1 : socle commun + `maze_v2` ; B3-B.3b.2 : `connect_dots_v2` ; B3-B.3b.3 : `match_v2`)
 
 ```text
 kind                  = SYNTHETIC_NON_PRODUCTION
@@ -12,8 +12,8 @@ PRODUCTION_GENERATION = FORBIDDEN
 ```
 
 Package `src/lafractale/mechanics_v2/` : `core.py` (socle), `maze.py` / `maze_verify.py` (`maze_v2` : spécification, générateur, vérification
-indépendante), `connect_dots.py` / `connect_dots_verify.py` (`connect_dots_v2`), `registry.py` (registre fermé `MECHANICS_V2`). Le registre
-contient `maze_v2` (B3-B.3b.1) et `connect_dots_v2` (B3-B.3b.2) ; `match_v2` viendra dans B3-B.3b.3, après validation.
+indépendante), `connect_dots.py` / `connect_dots_verify.py` (`connect_dots_v2`), `match.py` / `match_verify.py` (`match_v2`), `registry.py` (registre fermé `MECHANICS_V2`). Le registre
+contient `maze_v2` (B3-B.3b.1), `connect_dots_v2` (B3-B.3b.2) et `match_v2` (B3-B.3b.3).
 
 ## Périmètre et séparation
 
@@ -185,6 +185,87 @@ max_attempts}`. Version `b3b3b2-connect-dots-v2-1.0`. Même schéma, même encod
 * Une seule famille (`radial`) ; les formes historiques `moon`/`house`/`star` et le croissant C4 restent hors de v2.
 * `search.attempts` n'est pas rejoué indépendamment (dette technique non bloquante, comme pour `maze_v2`). L'empreinte SHA-256 garantit
   l'intégrité du contenu, **pas** une provenance authentifiée.
+
+## `match_v2` (B3-B.3b.3)
+
+Paires de **symboles géométriques synthétiques** à relier, avec une bijection dont chaque lien est déterminé par une propriété **observable** de la géométrie, jamais par un identifiant. Ni chapeaux, ni cadeaux, ni pictogrammes réels, ni assets : les familles saisonnières (`hats`, `gifts`, `hat_*`, `gift_*`) sont refusées (`BAD_FAMILY`) et la génération historique `generate_match` n'est ni utilisée ni modifiée.
+
+| Paramètre | Domaine | Erreur |
+|---|---|---|
+| `pairs` | entier strict de 3 à 6 inclus | `BAD_PAIRS` |
+| `relation` | `twin` ou `count` | `BAD_RELATION` |
+| `family` | `polygon`, `star` ou `mixed` | `BAD_FAMILY` |
+| combinaison | `star` limitée à 3 classes (`pairs` ≤ 3) ; `count` réservé à `polygon` | `BAD_COMBINATION` |
+
+Treize combinaisons sont valides (sur 24 : onze refusées explicitement, rien n'est dégradé en silence).
+
+### Vocabulaire fermé : tables d'entiers dans un cadre local 100 × 100
+
+Chaque symbole est une table littérale de sommets entiers, dans un cadre local `[0, 100]²`, sens anti-horaire, premier sommet = plus petit `(y, x)`. Aucune trigonométrie, aucun flottant : `polygon` = polygone convexe de 3 à 8 côtés, `star` = étoile à 4, 5 ou 6 branches (neuf classes). Signature d'une classe = (nombre de sommets, nombre de sommets rentrants), toutes distinctes (octogone (8, 0) ≠ étoile à 4 branches (8, 4)). Pour `count`, le côté droit est un motif de *k* points (tables de 3 à 8 points, distants d'au moins 30 dans le cadre, à 15 au moins du bord).
+
+### Relations
+
+* **`twin`** : le symbole de droite a *exactement* la même liste de sommets que celui de gauche **dans le repère local normalisé**. C'est une égalité de listes d'entiers, pas une congruence par rotation ou translation : un symbole translaté de 1, tourné (liste décalée), réfléchi ou réduit n'est pas jumeau.
+* **`count`** : un polygone à *k* sommets à gauche, un motif de *k* points à droite.
+
+Le vérificateur **recalcule les signatures depuis les coordonnées** (produits en croix, simplicité par test exact, convexité) ; le champ `label` est informatif : il n'intervient jamais dans la décision de correspondance, il est seulement contrôlé séparément (M8). Permuter ou falsifier des étiquettes ne change ni la relation recalculée ni l'unicité, et produit uniquement des erreurs M8.
+
+### Critères (neuf : M1 à M9 ; tous exacts, aucun n'est jamais assoupli)
+
+| # | Critère |
+|---|---|
+| M1 | `left_to_right` est une permutation de 0..N−1 **différente de l'identité** ; les points fixes individuels sont autorisés |
+| M2 | dans une colonne, deux symboles ont des signatures différentes (pour `count` : des nombres de points différents, voir M9) |
+| M3 | **unicité bilatérale** : chaque symbole de gauche est en relation avec exactement un symbole de droite et réciproquement, et c'est l'association de la solution (matrice recalculée depuis les coordonnées) |
+| M4 | contours bien formés : entiers, dans le cadre, anti-horaires, simples, strictement convexes (`polygon`) ou avec exactement *k* sommets rentrants (`star`), égaux à la table fermée |
+| M5 | rapport aire / boîte englobante : deux symboles de gauche diffèrent d'au moins δ = 5 000 millionièmes (comparaison exacte en `Fraction`) ; **indicateur géométrique seulement**, aucune garantie de discrimination visuelle humaine |
+| M6 | aucun triplet de liens concourants en un point intérieur (test exact en fractions, sur tous les triplets) |
+| M7 | mise en page : la **boîte englobante réelle** de chaque symbole translaté à sa position, et non la cellule nominale, reste dans les marges de la grille (50..950), les boîtes d'une colonne sont à 30 au moins l'une de l'autre, les symboles sont à 20 au moins des ancrages |
+| M8 | étiquettes cohérentes avec les signatures recalculées |
+| M9 | `count` : motifs égaux aux tables fermées, dans le cadre, points distants d'au moins 30, nombres de points tous différents |
+
+À six paires le pas entre rangées est de 150 : les symboles (hauteur réelle ≤ 96) laissent toujours au moins 54 entre deux boîtes, quelle que soit la combinaison (testé sur chaque combinaison valide à six paires). Le nombre de croisements de liens (`crossings` = inversions de la permutation) est une mesure d'information, pas une contrainte.
+
+**Sur M5 (limite à connaître).** δ a été fixé à partir des tables **avant** le benchmark de validation : le plus petit écart entre les neuf classes est 3/364 ≈ 0,00824 (hexagone 0,75 contre heptagone 0,7418). δ = 0,005 est donc *inférieur* à tout écart possible : sur le vocabulaire actuel M5 est toujours satisfait (0 rejet en 13 000 générations) et n'agit que comme garde contre une régression des tables. Des tables inclinées pourraient atteindre environ 0,030, au prix de symboles moins lisibles ; ce choix, et le fait qu'un écart de 1 % de remplissage ne garantit pas qu'un enfant distingue deux formes, restent à arbitrer. La garantie principale est la signature de M2 (nombre de sommets et de sommets rentrants).
+
+### Géométrie, solution, mesures
+
+`geometry = {relation, family, grid: 1000, rows, anchors: {left_x: 260, right_x: 740, ys}, left, right}` avec `ys[i] = 50 + (2i+1)·900 // (2N)` ; chaque entrée `{row, label, origin, vertices | dots}` (origine monde du cadre local : `[100, ys[i]−50]` à gauche, `[800, ys[j]−50]` à droite). `solution = {left_to_right}`, `measures = {pairs, fixed_points, crossings, min_area_ratio_gap_ppm}`, `search = {attempts, max_attempts: 2000}`. Les liens joignent l'ancre gauche de la rangée *i* à l'ancre droite de la rangée `left_to_right[i]`.
+
+### Génération déterministe et recherche bornée
+
+Tentative *a* (0 ≤ *a* < 2 000) : flux `DetRng` dérivé de (identifiant, graine, paramètres, *a*) ; tirage de N classes dans le réservoir, permutation mélangée, rejet de l'identité, de M5 et des liens concourants. Premier candidat valide renvoyé ; sinon `UNSATISFIABLE`, sans jamais relâcher un critère. Version `b3b3b3-match-v2-1.0`. Empreintes de référence figées dans les tests (3 combinaisons), identiques sous Python 3.11, 3.12 et 3.13 (vérifié à la main ; la CI ne teste que 3.11).
+
+### Benchmark (1 000 graines par combinaison valide, générées **et** revérifiées)
+
+13 combinaisons × 1 000 graines (0 à 999, identifiant `syn-bench`) = 13 000 activités : **0 échec**, pire cas 9 tentatives sur 2 000.
+
+| pairs | relation | famille | moyenne | p95 | p99 | max | points fixes min/moy/max | écart M5 min (ppm) |
+|---:|---|---|---:|---:|---:|---:|---|---:|
+| 3 | twin | polygon | 1.57 | 3 | 5 | 7 | 0 / 0.49 / 1 | 8241 |
+| 3 | twin | star | 1.52 | 3 | 5 | 9 | 0 / 0.52 / 1 | 8455 |
+| 3 | twin | mixed | 1.51 | 4 | 5 | 7 | 0 / 0.52 / 1 | 8241 |
+| 3 | count | polygon | 1.49 | 3 | 5 | 7 | 0 / 0.49 / 1 | 8241 |
+| 4 | twin | polygon | 1.18 | 2 | 3 | 5 | 0 / 0.80 / 2 | 8241 |
+| 4 | twin | mixed | 1.19 | 2 | 3 | 4 | 0 / 0.79 / 2 | 8241 |
+| 4 | count | polygon | 1.22 | 2 | 3 | 4 | 0 / 0.79 / 2 | 8241 |
+| 5 | twin | polygon | 1.38 | 3 | 4 | 5 | 0 / 1.06 / 3 | 8241 |
+| 5 | twin | mixed | 1.44 | 3 | 4 | 6 | 0 / 1.03 / 3 | 8241 |
+| 5 | count | polygon | 1.45 | 3 | 5 | 7 | 0 / 1.06 / 3 | 8241 |
+| 6 | twin | polygon | 1.56 | 3 | 5 | 7 | 0 / 1.09 / 4 | 8241 |
+| 6 | twin | mixed | 1.50 | 3 | 5 | 6 | 0 / 1.09 / 4 | 8241 |
+| 6 | count | polygon | 1.52 | 3 | 5 | 7 | 0 / 1.01 / 4 | 8241 |
+
+### Vérification indépendante
+
+`verify_match_v2` ne dépend d'aucune fonction géométrique du générateur (seules les tables littérales et les constantes sont lues comme données) : signatures, orientation, simplicité, convexité, relation entre toutes les paires, unicité bilatérale, rapports aire/boîte en `Fraction`, boîtes réelles translatées, concours de tous les triplets de liens, mesures, empreinte. Égalité de types stricte (`True` ≠ 1, `1.0` ≠ 1), clés exactes. Tests : oracle séparé en `Fraction` comparé au vérificateur sur 3 000 enregistrements mutés et sur toutes les permutations de 3 à 6 rangées ; falsifications avec empreinte recalculée (l'empreinte ne prouve pas la validité) ; analyse des contours comparée à une référence sur 4 000 polygones aléatoires. Mutation (opérateurs de comparaison, booléens, arithmétique, constantes, négations ; 684 mutants des deux modules) : 654 tués, 30 survivants examinés un par un et tous équivalents (texte de message, comparaisons d'entiers distincts, égalités de bord inatteignables, bornes de boucle redondantes). La première passe (130 survivants) a révélé un défaut réel, corrigé : les boîtes englobantes étaient mesurées à la position attendue et non à l'origine publiée.
+
+### Limites propres à `match_v2`
+
+* Aucune validation pédagogique humaine. L'hypothèse que `twin` est plus accessible que `count` (qui suppose de dénombrer jusqu'à 8) pour 4–5 ans n'est pas vérifiée ; avec 3 paires, une association tirée au hasard réussit une fois sur six (3! = 6 permutations), ou une fois sur cinq si l'enfant sait que l'identité est exclue : le minimum de 3 paires écarte le cas à une chance sur deux, pas le hasard.
+* Pas de rendu : croisements de liens, lisibilité, épaisseur de trait relèvent de l'issue #15.
+* Symboles abstraits sans sens narratif ; les pages réelles (p.27, p.46) ne sont pas couvertes.
+* M5 est un indicateur faible (voir plus haut). `search.attempts` n'est pas rejoué indépendamment ; l'empreinte SHA-256 garantit l'intégrité, pas une provenance authentifiée.
 
 ## Sérialisation canonique (schéma `lafractale-mechanics-v2-activity-v1`)
 
