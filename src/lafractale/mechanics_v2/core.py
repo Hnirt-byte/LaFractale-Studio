@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from itertools import islice
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -63,7 +64,7 @@ def bounded_repr(value: Any, limit: int = 80, _depth: int = 0) -> str:
             text = "[" + ", ".join(parts) + (", …" if len(value) > 6 else "") + "]"
         else:
             parts = [f"{bounded_repr(k, limit, _depth + 1)}: {bounded_repr(v, limit, _depth + 1)}"
-                     for k, v in list(value.items())[:6]]
+                     for k, v in islice(value.items(), 6)]
             text = "{" + ", ".join(parts) + (", …" if len(value) > 6 else "") + "}"
         return text if len(text) <= 4 * limit else text[:4 * limit] + "…"
     if kind in (list, dict):
@@ -296,9 +297,9 @@ def check_params(params: Any, spec: Mapping[str, Callable[[Any], Any]]) -> dict[
     """Closed parameter set: every key declared, none missing, none extra; each value validated."""
     if not isinstance(params, Mapping) or type(params) not in (dict, FrozenDict):
         raise V2Error("BAD_PARAMS", "mapping de paramètres attendu")
-    extra = [k for k in params if k not in spec]
+    extra = list(islice((k for k in params if k not in spec), 9))  # never collects more than 9 unknown keys
     if extra:
-        shown = ", ".join(sorted(k[:40] if type(k) is str else bounded_repr(k, 40) for k in extra[:8])) + (" …" if len(extra) > 8 else "")
+        shown = ", ".join(sorted(k[:40] if type(k) is str else bounded_repr(k, 40) for k in extra[:8])) + (" … (et d'autres)" if len(extra) > 8 else "")
         raise V2Error("UNKNOWN_PARAM", f"paramètre(s) non autorisé(s) : {shown}")
     missing = sorted(k for k in spec if k not in params)
     if missing:

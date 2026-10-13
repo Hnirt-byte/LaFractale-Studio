@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import ast
 import json
+import tracemalloc
 from pathlib import Path
 
 import pytest
@@ -504,3 +505,48 @@ def test_no_new_dependency_and_no_editorial_coupling():
     modules = {getattr(n, "module", None) or n.names[0].name for n in imports}
     assert not any("scenario_b" in (m or "") or "editorial" in (m or "") for m in modules)
     assert core.MAX_RECORD_INT_BITS == 4096  # stays under CPython's default 4 300-digit conversion limit
+
+
+# ---- memory: no auxiliary list of all the entries of a large ordinary dict ---------------------------------
+def peak_bytes(call) -> int:
+    tracemalloc.start()
+    try:
+        call()
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+
+
+def test_bounded_repr_of_a_large_dict_does_not_materialise_its_entries():
+    big = {str(i): i for i in range(1_000_000)}  # built before measuring
+    text = bounded_repr(big)
+    assert text.endswith(", …}") and text.count(": ") == 6
+    assert peak_bytes(lambda: bounded_repr(big)) < 64 * 1024  # list(items())[:6] would need tens of megabytes
+
+
+def test_check_params_with_a_huge_number_of_unknown_keys_collects_at_most_nine():
+    spec = MECHANICS_V2["maze_v2"].params
+    big = {"size": 4, "difficulty": "easy", **{f"x{i:07d}": i for i in range(1_000_000)}}
+    with pytest.raises(V2Error) as info:
+        core.check_params(big, spec)
+    assert info.value.code == "UNKNOWN_PARAM" and "et d'autres" in str(info.value)
+    assert str(info.value).count("x00") == 8 and len(str(info.value)) < 400
+
+    def call():
+        with pytest.raises(V2Error):
+            core.check_params(big, spec)
+
+    assert peak_bytes(call) < 64 * 1024  # a list of the 1 000 000 unknown keys would need about 8 MB
+
+
+def test_check_params_unknown_keys_message_is_unchanged_for_a_few_keys():
+    spec = MECHANICS_V2["maze_v2"].params
+    with pytest.raises(V2Error) as info:
+        core.check_params({"size": 4, "difficulty": "easy", "b": 1, "a": 2}, spec)
+    assert info.value.code == "UNKNOWN_PARAM" and str(info.value).endswith("a, b")
+    with pytest.raises(V2Error) as info:  # exactly eight unknown keys: no ellipsis
+        core.check_params({"size": 4, "difficulty": "easy", **{f"k{i}": 0 for i in range(8)}}, spec)
+    assert "et d'autres" not in str(info.value)
+    with pytest.raises(V2Error) as info:  # nine: ellipsis
+        core.check_params({"size": 4, "difficulty": "easy", **{f"k{i}": 0 for i in range(9)}}, spec)
+    assert "et d'autres" in str(info.value)
