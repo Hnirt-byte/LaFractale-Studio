@@ -40,7 +40,7 @@ Les paramètres sont un ensemble fermé : toute clé inconnue ou absente est ref
 
 | Entrée | Contrainte | Erreur |
 |---|---|---|
-| `activity_id` | `syn-` puis minuscules/chiffres/tirets, ≤ 50 car. | `BAD_ACTIVITY_ID` |
+| `activity_id` | `syn-` puis minuscules/chiffres/tirets, 50 caractères au plus, sans tiret final | `BAD_ACTIVITY_ID` |
 | `seed` | entier (pas booléen) entre 0 et 2⁶³−1 | `BAD_SEED` |
 | `size` | entier de 3 à 12 inclus | `BAD_SIZE` |
 | `difficulty` | `easy`, `medium` ou `hard` | `BAD_DIFFICULTY` |
@@ -63,7 +63,7 @@ choix sur le chemin (cellules du chemin offrant au moins un passage qui en sort)
 
 Arithmétique entière uniquement ; les trois bandes sont disjointes et couvrent tous les cas. **Ce sont des paramètres techniques, pas un
 jugement pédagogique** : aucune relecture humaine de l'adéquation à l'âge n'a été faite (`human_pedagogical_validation = "NONE"`).
-Les 30 couples taille × niveau sont satisfaisables (testés sur plusieurs graines ; au plus 142 tentatives observées sur 1 200 générations).
+Les 30 couples taille × niveau sont satisfaisables : les tests parcourent chaque couple sur plusieurs graines et exigent un effort de recherche inférieur au dixième de la borne (quelques dizaines de tentatives en pratique).
 
 ### Recherche déterministe bornée, échec explicite
 
@@ -74,9 +74,9 @@ générateur SHA-256 en mode compteur (`DetRng`) : le flux ne dépend pas de la 
 
 ### Vérification indépendante
 
-`verify_maze_v2` ne s'appuie sur aucun élément du générateur : passages canoniques (triés, uniques, adjacents, dans la grille), arbre couvrant
+`verify_maze_v2` ne s'appuie sur aucun algorithme ni mesure du générateur. Il partage seulement avec lui la *spécification* des niveaux (`band`, `meets`, `minimum_path`, `span`), vérifiée séparément par un tableau calculé à la main dans les tests. Il recalcule : passages canoniques (triés, uniques, adjacents, dans la grille), arbre couvrant
 (union-find : N²−1 passages, aucun cycle, une composante), chemin unique (parcours en profondeur itératif) comparé au chemin déclaré **et** à
-`maze_unique_path` (vérificateur historique), mesures et niveau recalculés, `params`/`search` cohérents, empreinte recalculée.
+`maze_unique_path` (vérificateur historique), mesures et niveau, `params`, `search` (la tentative déclarée et l'algorithme doivent correspondre à la rotation ; le nombre de tentatives lui-même n'est pas rejoué), graine bornée, empreinte. Les comparaisons sont **strictes** (`False` n'est pas `0`, `1.0` n'est pas `1`) : un labyrinthe n'a qu'une seule forme canonique valide. `verify_v2` renvoie toujours une liste de problèmes (mécanique inconnue ou absente comprise).
 
 ## Sérialisation canonique (schéma `lafractale-mechanics-v2-activity-v1`)
 
@@ -88,7 +88,7 @@ chaînes, booléens, `null`, tableaux et objets uniquement (flottants, NaN, clé
 
 Pour `maze_v2` : `geometry = {size, start, goal, open_edges}` (passages `[[x,y],[x,y]]`, plus petite cellule d'abord, triés), `solution = {path,
 steps}`, `measures = {path_length, dead_ends, decisions, minimum_path_length, span}`, `search = {algorithm, attempts, max_attempts}`.
-Les objets Python (`V2Activity`, `FrozenDict`) sont profondément immuables ; `to_dict()` renvoie une copie indépendante.
+Les objets Python (`V2Activity`, `FrozenDict`) sont profondément immuables, y compris à la construction directe (les conteneurs sont gelés par `__post_init__`) ; `to_dict()` renvoie une copie indépendante. Limite connue de Python : `object.__setattr__` contourne tout objet gelé ; un enregistrement ainsi falsifié reste refusé par la vérification (empreinte).
 
 ## Limites
 

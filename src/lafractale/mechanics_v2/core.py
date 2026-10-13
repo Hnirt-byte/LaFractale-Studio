@@ -19,7 +19,7 @@ from lafractale.security.strict_json import StrictJSONError, loads_strict
 
 MAX_SEED = 2**63 - 1
 MAX_DEPTH = 16
-ACTIVITY_ID = re.compile(r"\Asyn-[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?\Z")
+ACTIVITY_ID = re.compile(r"\Asyn-[a-z0-9](?:[a-z0-9-]{0,44}[a-z0-9])?\Z")  # at most 50 characters in all
 
 
 class V2Error(ValueError):
@@ -114,6 +114,14 @@ class V2Activity:
     search: FrozenDict
     fingerprint: str
 
+    def __post_init__(self) -> None:
+        # Direct construction freezes too: no mutable container can enter a V2Activity.
+        for name in ("params", "geometry", "solution", "measures", "search"):
+            value = freeze(getattr(self, name))
+            if not isinstance(value, FrozenDict):
+                raise V2Error("BAD_VALUE", f"{name} : mapping attendu")
+            object.__setattr__(self, name, value)
+
     @property
     def production_authorized(self) -> bool:
         return PRODUCTION_AUTHORIZED
@@ -169,7 +177,7 @@ def loads_record(data: bytes) -> dict[str, Any]:
 # ---- request validation --------------------------------------------------------------------------
 def check_activity_id(activity_id: Any) -> str:
     if type(activity_id) is not str or not ACTIVITY_ID.match(activity_id):
-        raise V2Error("BAD_ACTIVITY_ID", "identifiant synthétique obligatoire : « syn- » puis minuscules/chiffres/tirets (≤ 50 car.)")
+        raise V2Error("BAD_ACTIVITY_ID", "identifiant synthétique obligatoire : « syn- » puis minuscules/chiffres/tirets, 50 caractères au plus, sans tiret final")
     return activity_id
 
 

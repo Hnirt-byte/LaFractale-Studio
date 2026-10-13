@@ -12,9 +12,9 @@ from typing import Any
 
 from lafractale.engine.solvers import maze_unique_path
 from lafractale.mechanics_v2 import HUMAN_PEDAGOGICAL_VALIDATION, V2_KIND, V2_SCHEMA
-from lafractale.mechanics_v2.core import ACTIVITY_ID, V2Activity, V2Error, record_fingerprint
+from lafractale.mechanics_v2.core import ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, record_fingerprint
 from lafractale.mechanics_v2.maze import (
-    DIFFICULTIES, MAX_ATTEMPTS, MAZE_V2_MECHANIC, MAZE_V2_VERSION, SIZE_MAX, SIZE_MIN, meets, minimum_path, span,
+    ALGORITHMS, DIFFICULTIES, MAX_ATTEMPTS, MAZE_V2_MECHANIC, MAZE_V2_VERSION, SIZE_MAX, SIZE_MIN, meets, minimum_path, span,
 )
 
 _BODY_KEYS = {"schema", "kind", "mechanic", "version", "activity_id", "seed", "human_pedagogical_validation",
@@ -23,6 +23,17 @@ _BODY_KEYS = {"schema", "kind", "mechanic", "version", "activity_id", "seed", "h
 
 def _int(value: Any) -> bool:
     return type(value) is int
+
+
+def _same(a: Any, b: Any) -> bool:
+    """Strict structural equality: ``False`` is not ``0`` and ``1.0`` is not ``1`` (one canonical form only)."""
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, list):
+        return len(a) == len(b) and all(_same(x, y) for x, y in zip(a, b))
+    if isinstance(a, Mapping):
+        return set(a) == set(b) and all(_same(a[k], b[k]) for k in a)
+    return a == b
 
 
 def _cell(value: Any, size: int) -> tuple[int, int] | None:
@@ -47,8 +58,8 @@ def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
         errors.append("production_authorized doit valoir false")
     if not isinstance(data["activity_id"], str) or not ACTIVITY_ID.match(data["activity_id"]):
         errors.append("activity_id : identifiant synthétique « syn-… » requis")
-    if not _int(data["seed"]) or data["seed"] < 0:
-        errors.append("seed : entier positif ou nul requis")
+    if not _int(data["seed"]) or not 0 <= data["seed"] <= MAX_SEED:
+        errors.append(f"seed : entier entre 0 et {MAX_SEED} requis")
     params, geometry, solution, measures, search = (data[k] for k in ("params", "geometry", "solution", "measures", "search"))
     if not all(isinstance(v, Mapping) for v in (params, geometry, solution, measures, search)):
         return errors + ["params/geometry/solution/measures/search : mappings attendus"]
@@ -57,10 +68,10 @@ def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     size, level = params["size"], params["difficulty"]
     if not _int(size) or not SIZE_MIN <= size <= SIZE_MAX:
         return errors + [f"params.size : entier entre {SIZE_MIN} et {SIZE_MAX}"]
-    if level not in DIFFICULTIES:
+    if type(level) is not str or level not in DIFFICULTIES:
         return errors + [f"params.difficulty : parmi {DIFFICULTIES}"]
-    if geometry.get("size") != size or geometry.get("start") != [0, 0] or geometry.get("goal") != [size - 1, size - 1] \
-            or set(geometry) != {"size", "start", "goal", "open_edges"}:
+    if set(geometry) != {"size", "start", "goal", "open_edges"} or not _same(geometry["size"], size) \
+            or not _same(geometry["start"], [0, 0]) or not _same(geometry["goal"], [size - 1, size - 1]):
         errors.append("geometry : taille, départ (0,0) et arrivée (n-1,n-1) incohérents avec params")
 
     # -- passages: canonical, in-grid, adjacent, unique ------------------------------------------
@@ -124,7 +135,8 @@ def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     historical, reasons = maze_unique_path(size, [[list(a), list(b)] for a, b in edges])
     if reasons or historical != path:
         errors.append(f"chemin unique : désaccord avec la vérification historique ({reasons or 'chemins différents'})")
-    if set(solution) != {"path", "steps"} or solution.get("path") != [list(c) for c in path] or solution.get("steps") != len(path) - 1:
+    if set(solution) != {"path", "steps"} or not _same(solution["path"], [list(c) for c in path]) \
+            or not _same(solution["steps"], len(path) - 1):
         errors.append("solution : chemin ou nombre de pas différent du chemin unique recalculé")
 
     # -- measures and level, from scratch ------------------------------------------------------------------
@@ -134,14 +146,15 @@ def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     steps = len(path) - 1
     expected = {"path_length": steps, "dead_ends": dead_ends, "decisions": decisions,
                 "minimum_path_length": minimum_path(size), "span": span(size)}
-    if dict(measures) != expected:
+    if not _same(dict(measures), expected):
         errors.append(f"measures : valeurs recalculées {expected}, reçues {dict(measures)}")
     if not meets(size, level, steps, dead_ends, decisions):
         errors.append(f"difficulté : le labyrinthe ne satisfait pas toutes les contraintes du niveau {level} "
                       f"(L={steps}, D={dead_ends}, B={decisions})")
-    if set(search) != {"algorithm", "attempts", "max_attempts"} or search.get("max_attempts") != MAX_ATTEMPTS \
-            or not _int(search.get("attempts")) or not 1 <= search["attempts"] <= MAX_ATTEMPTS:
-        errors.append("search : algorithm, attempts (1..max) et max_attempts requis")
+    if set(search) != {"algorithm", "attempts", "max_attempts"} or not _same(search["max_attempts"], MAX_ATTEMPTS) \
+            or not _int(search["attempts"]) or not 1 <= search["attempts"] <= MAX_ATTEMPTS \
+            or search["algorithm"] != ALGORITHMS[(search["attempts"] - 1) % len(ALGORITHMS)]:
+        errors.append("search : attempts (1..max) et algorithm cohérents avec la rotation des algorithmes requis")
     try:
         if record_fingerprint(data) != data["fingerprint"]:
             errors.append("fingerprint : ne correspond pas au contenu canonique")

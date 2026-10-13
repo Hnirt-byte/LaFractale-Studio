@@ -87,6 +87,14 @@ def test_prng_is_a_pure_function_of_its_material():
 
 
 # ---- level specification -------------------------------------------------------------------------
+def test_level_bands_match_a_hand_computed_table():
+    """Literal expectations (not derived from the code): N=5 -> Lmin=8, span=16; N=3 -> Lmin=4, span=4."""
+    five = {8: "easy", 10: "easy", 12: "easy", 14: "medium", 16: "medium", 18: "hard", 20: "hard", 22: "hard", 24: "hard"}
+    assert {length: band(5, length) for length in five} == five
+    assert [band(3, length) for length in (4, 6, 8)] == ["easy", "medium", "hard"]
+    assert [band(12, length) for length in (22, 52, 53, 82, 83, 143)] == ["easy", "easy", "medium", "medium", "hard", "hard"]
+
+
 def test_levels_partition_every_possible_excess():
     for size in SIZES:
         low, total = 2 * (size - 1), (size - 1) ** 2
@@ -124,6 +132,11 @@ def test_every_size_and_level_is_satisfiable_and_independently_verified(size, le
         seen.add(activity.fingerprint)
         assert make(size, level, seed, f"syn-p{size}").fingerprint == activity.fingerprint  # deterministic
     assert len(seen) > 1 or size == 3  # different seeds do not collapse to one maze
+
+
+def test_search_effort_stays_far_below_the_bound():
+    worst = max(make(size, level, seed, f"syn-w{size}").search["attempts"] for size in SIZES for level in DIFFICULTIES for seed in range(10))
+    assert worst < MAX_ATTEMPTS // 10
 
 
 def test_levels_are_measurably_ordered_by_path_length():
@@ -186,6 +199,16 @@ def test_only_explicitly_synthetic_ids_are_accepted(activity_id):
     assert info.value.code == "BAD_ACTIVITY_ID"
 
 
+def test_activity_id_length_boundary_is_exactly_fifty():
+    assert len("syn-" + "a" * 46) == 50
+    make(activity_id="syn-" + "a" * 46)
+    for bad in ("syn-" + "a" * 47, "syn-" + "a" * 45 + "-"):
+        with pytest.raises(V2Error):
+            make(activity_id=bad)
+    make(activity_id="syn-a")
+    make(activity_id="syn-a-b")
+
+
 @pytest.mark.parametrize("seed", [-1, 2**63, 1.0, "1", None, True])
 def test_bad_seeds_are_refused(seed):
     with pytest.raises(V2Error) as info:
@@ -201,10 +224,8 @@ def test_unknown_mechanics_are_refused_and_registry_is_closed():
     assert set(MECHANICS_V2) == {"maze_v2"}
     with pytest.raises(TypeError):
         MECHANICS_V2["x"] = None  # type: ignore[index]
-    with pytest.raises(V2Error):
-        verify_v2({"mechanic": "nope"})
-    with pytest.raises(V2Error):
-        verify_v2([])  # type: ignore[arg-type]
+    for bad in ({"mechanic": "nope"}, [], {}, None, {"mechanic": ["maze_v2"]}):
+        assert verify_v2(bad)  # type: ignore[arg-type]  # a list of problems, never an exception
 
 
 def test_a_failing_self_check_is_never_returned(monkeypatch):
@@ -292,6 +313,41 @@ def test_wrong_solution_measures_level_and_params_are_detected(sample):
     assert any("niveau hard" in e for e in verify_maze_v2(refingerprint(tampered(sample, wrong_level))))
 
 
+def test_booleans_and_lookalikes_cannot_replace_integers(sample):
+    """False == 0 in Python: a second 'valid' record for the same maze would break canonical uniqueness."""
+    def start(d):
+        d["geometry"]["start"] = [False, False]
+    def first_cell(d):
+        d["solution"]["path"][0] = [False, False]
+    def steps(d):
+        d["solution"]["steps"] = float(d["solution"]["steps"])
+    def measure(d):
+        d["measures"]["dead_ends"] = bool(d["measures"]["dead_ends"]) if d["measures"]["dead_ends"] in (0, 1) else True
+    def size(d):
+        d["geometry"]["size"] = True if d["geometry"]["size"] == 1 else float(d["geometry"]["size"])
+    def seed(d):
+        d["seed"] = True
+    def attempts(d):
+        d["search"]["attempts"] = float(d["search"]["attempts"])
+    for mutate in (start, first_cell, steps, size, seed, attempts):
+        assert verify_maze_v2(tampered(sample, mutate)), mutate.__name__
+    small = next(x for x in (make(3, "easy", n, "syn-b") for n in range(30)) if x.measures["dead_ends"] in (0, 1))
+    for key in ("dead_ends", "decisions"):
+        value = small.measures[key]
+        if value in (0, 1):
+            forged = tampered(small, lambda d, key=key: d["measures"].update({key: bool(value)}))
+            assert verify_maze_v2(refingerprint(forged)), key  # a recomputed fingerprint cannot rescue a bool
+    assert verify_maze_v2(refingerprint(tampered(sample, start)))
+
+
+def test_search_metadata_and_seed_bounds_are_verified(sample):
+    assert verify_maze_v2(refingerprint(tampered(sample, lambda d: d["search"].update(algorithm="evil"))))
+    other = next(a for a in maze.ALGORITHMS if a != sample.search["algorithm"])
+    assert verify_maze_v2(refingerprint(tampered(sample, lambda d: d["search"].update(algorithm=other))))
+    assert verify_maze_v2(refingerprint(tampered(sample, lambda d: d.update(seed=2**70))))
+    assert verify_maze_v2(refingerprint(tampered(sample, lambda d: d["search"].update(attempts=maze.MAX_ATTEMPTS + 1))))
+
+
 def test_fingerprint_tampering_is_detected(sample):
     assert any("fingerprint" in e for e in verify_maze_v2(tampered(sample, lambda d: d.update(fingerprint="0" * 64))))
     assert any("fingerprint" in e for e in verify_maze_v2(tampered(sample, lambda d: d["measures"].update(span=0))))
@@ -345,6 +401,22 @@ def test_outputs_are_deeply_immutable(sample):
     with pytest.raises(AttributeError):
         sample.geometry["open_edges"].append(None)  # type: ignore[attr-defined]
     assert hash(sample.geometry) == hash(make().geometry)
+
+
+def test_direct_construction_cannot_smuggle_mutable_containers(sample):
+    fields = {f.name: getattr(sample, f.name) for f in dataclasses.fields(sample)}
+    fields["params"] = {"size": 5, "difficulty": ["medium"]}
+    forged = V2Activity(**fields)
+    _walk(forged)
+    with pytest.raises(AttributeError):
+        forged.params["difficulty"].append("x")  # type: ignore[attr-defined]  # frozen into a tuple
+    fields["geometry"] = [1]
+    with pytest.raises(V2Error):
+        V2Activity(**fields)
+    fields["geometry"] = {"f": 1.5}
+    with pytest.raises(V2Error):
+        V2Activity(**fields)
+    assert verify_v2(forged)  # the forged record is not accepted either (fingerprint no longer matches)
 
 
 def test_to_dict_returns_independent_copies(sample):
