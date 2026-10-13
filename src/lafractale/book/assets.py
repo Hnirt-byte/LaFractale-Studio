@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from lafractale.book.pages import BookError
 
@@ -72,10 +72,17 @@ def _normalize(img: Image.Image, kind: str) -> Image.Image:
             img = bg
         return img.convert("L")
     rgba = img.convert("RGBA")
-    alpha = rgba.getchannel("A")
-    if alpha.getextrema()[0] == 255:  # aucun pixel transparent : dessin au trait sur fond blanc
-        dark = img.convert("L").point(lambda v: 255 - v)
-        rgba = Image.merge("RGBA", (*(Image.new("L", img.size, 0),) * 3, dark))
+    if rgba.getchannel("A").getextrema()[0] == 255:
+        # Dessin au trait sur fond blanc : le fond relié au bord devient transparent, l'intérieur reste opaque
+        # (un objet posé sur une scène doit la masquer, pas la laisser transparaître).
+        gray = img.convert("L")
+        padded = Image.new("L", (gray.width + 2, gray.height + 2), 255)
+        padded.paste(gray, (1, 1))
+        marked = padded.point(lambda v: 0 if v > 235 else 255)  # 0 = blanc, 255 = trait
+        ImageDraw.floodfill(marked, (0, 0), 128, thresh=0)       # 128 = fond relié au bord
+        background = marked.crop((1, 1, gray.width + 1, gray.height + 1)).point(lambda v: 0 if v == 128 else 255)
+        rgb = Image.merge("RGB", (gray,) * 3)
+        rgba = Image.merge("RGBA", (*rgb.split(), background))
     box = rgba.getchannel("A").getbbox()
     if box is None:
         raise BookError("image entièrement vide")

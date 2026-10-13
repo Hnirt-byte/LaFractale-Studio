@@ -63,6 +63,15 @@ def test_import_normalizes_object_and_scene(repo):
     assert Image.open(m.assets["sprite_chauve_souris"].path).mode == "RGBA"
 
 
+def test_import_keeps_enclosed_white_opaque(repo):
+    """Le blanc enfermé dans le trait (ventre du chat) reste opaque : le décor ne doit pas transparaître."""
+    m = manifest(repo)
+    import_png(m, "sprite_chat", fake_png(repo / "a.png"))
+    img = Image.open(m.assets["sprite_chat"].path)
+    assert img.getchannel("A").getpixel((img.width // 2, img.height // 2)) == 255
+    assert img.getchannel("A").getpixel((0, 0)) == 0
+
+
 def test_import_refusals(repo):
     m = manifest(repo)
     with pytest.raises(BookError, match="trop petit"):

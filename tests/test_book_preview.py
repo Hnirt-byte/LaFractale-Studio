@@ -56,7 +56,7 @@ def test_pdf_has_exactly_56_pages_with_text_and_watermark(preview):
         assert f"FICHE {n:02d}" in text
     assert "Find a path through the maze with Pip!" in doc[3].get_text()
     assert "PAGE PROVISOIRE" in doc[1].get_text()  # p.2 n'est pas présentée comme finalisée
-    assert "ASSET_MANQUANT" in doc[4].get_text()  # p.5 pilote : image absente signalée
+    assert "ASSET_MANQUANT" not in doc[4].get_text()  # p.5 pilote : images fournies (cas manquant : test_book_assets)
     assert "p.4 — Aide Pip à trouver la sortie" in doc[48].get_text()  # emplacement du corrigé p.4
 
 
