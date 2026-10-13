@@ -124,7 +124,7 @@ documenté. Le vérificateur contrôle l'ordre angulaire par un pseudo-angle rat
 Candidat `i` (0 ≤ i < `MAX_ATTEMPTS` = 2000) : flux dérivé de (id, graine, forme, points, mode, i). Le centre est tiré dans [450, 550]² ; le périmètre
 d'un carré de demi-côté 400 est découpé en N tranches égales décalées d'une phase aléatoire ; un point est tiré par tranche (échelle 40–100 %), puis
 la liste est tournée pour commencer à P1. Tout est entier. Le premier candidat qui satisfait **tous** les critères est retourné ; sinon `V2Error`
-`UNSATISFIABLE`. Les empreintes de référence sont identiques sous Python 3.11, 3.12 et 3.13 (testées sur 3 combinaisons figées).
+`UNSATISFIABLE`. Les empreintes de référence (3 combinaisons figées dans les tests) sont identiques sous Python 3.11, 3.12 et 3.13, vérifié à la main lors de la livraison ; la CI du dépôt ne teste que Python 3.11, donc cette égalité inter-versions n'est pas protégée automatiquement contre une régression.
 
 ### Benchmark (tentatives nécessaires, 5 à 24 points, deux modes)
 
@@ -160,7 +160,7 @@ La borne 24 est donc praticable sans assouplir aucun des sept critères (moyenne
 `verify_connect_dots_v2` ne réutilise aucune fonction géométrique du générateur : contact de segments par boîtes englobantes et signes
 d'orientation ; dégagement par projection avec `fractions.Fraction` ; ordre angulaire par pseudo-angle rationnel. Il recalcule C1 à C7,
 `measures` (dont `min_clearance_sq_floor`), `search`, `params` et l'empreinte, avec des comparaisons strictes (`True` n'est pas `1`, `1.0` n'est
-pas `1`). Il ne lève jamais d'exception sur une géométrie hostile (segment dégénéré compris). Un test différentiel compare le verdict du
+pas `1`). `verify_connect_dots_v2` ne lève jamais d'exception sur une géométrie hostile (segment dégénéré compris) ; `diagnose_connect_dots_v2` renvoie une liste vide dès qu'une coordonnée sort de la grille. Un test différentiel compare le verdict du
 générateur et celui du vérificateur sur plusieurs milliers de figures mutées, et chaque seuil est testé à sa frontière exacte (seuil = mesure :
 valide ; seuil = mesure + 1 : refusé).
 

@@ -232,6 +232,8 @@ def diagnose_connect_dots_v2(record: Mapping[str, Any] | V2Activity) -> list[str
         return []
     if points is None or type(closed) is not bool or len(points) < 3:
         return []
+    if any(not 0 <= v <= GRID for point in points for v in point):
+        return []  # outside the grid: verify_connect_dots_v2 reports it; no float conversion of hostile integers
     count = len(points)
     drawn = [(i, i + 1) for i in range(count - 1)] + ([(count - 1, 0)] if closed else [])
     notes = []

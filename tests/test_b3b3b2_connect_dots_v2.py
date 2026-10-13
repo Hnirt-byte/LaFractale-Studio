@@ -512,6 +512,14 @@ def test_float_disagreement_is_reported_but_never_a_rejection(sample, monkeypatc
     assert any("verdict exact conservé" in n for n in diagnose_connect_dots_v2(bow))
 
 
+def test_diagnostic_never_raises_on_huge_or_out_of_grid_integers(sample):
+    for value in (10**400, -(10**400), 1001, -1):
+        data = sample.to_dict()
+        data["geometry"]["points"][3]["x"] = value
+        assert diagnose_connect_dots_v2(data) == []
+        assert has(verify_connect_dots_v2(refingerprint(data)), "points et centre")
+
+
 def test_historical_float_helper_agrees_on_valid_records():
     for closed in MODES:
         for count in (5, 12, 24):
