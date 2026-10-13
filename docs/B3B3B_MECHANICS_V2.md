@@ -1,4 +1,4 @@
-# B3-B.3b — Mécaniques v2 (incrément B3-B.3b.1 : socle commun + `maze_v2`)
+# B3-B.3b — Mécaniques v2 (B3-B.3b.1 : socle commun + `maze_v2` ; B3-B.3b.2 : `connect_dots_v2`)
 
 ```text
 kind                  = SYNTHETIC_NON_PRODUCTION
@@ -11,9 +11,9 @@ KDP                   = FORBIDDEN
 PRODUCTION_GENERATION = FORBIDDEN
 ```
 
-Package `src/lafractale/mechanics_v2/` : `core.py` (socle), `maze.py` (spécification et générateur), `maze_verify.py` (vérification
-indépendante), `registry.py` (registre fermé `MECHANICS_V2`). Seul `maze_v2` existe dans cet incrément ; `connect_dots_v2` et `match_v2`
-viennent dans B3-B.3b.2 et B3-B.3b.3, après validation.
+Package `src/lafractale/mechanics_v2/` : `core.py` (socle), `maze.py` / `maze_verify.py` (`maze_v2` : spécification, générateur, vérification
+indépendante), `connect_dots.py` / `connect_dots_verify.py` (`connect_dots_v2`), `registry.py` (registre fermé `MECHANICS_V2`). Le registre
+contient `maze_v2` (B3-B.3b.1) et `connect_dots_v2` (B3-B.3b.2) ; `match_v2` viendra dans B3-B.3b.3, après validation.
 
 ## Périmètre et séparation
 
@@ -78,6 +78,114 @@ générateur SHA-256 en mode compteur (`DetRng`) : le flux ne dépend pas de la 
 (union-find : N²−1 passages, aucun cycle, une composante), chemin unique (parcours en profondeur itératif) comparé au chemin déclaré **et** à
 `maze_unique_path` (vérificateur historique), mesures et niveau, `params`, `search` (la tentative déclarée et l'algorithme doivent correspondre à la rotation ; le nombre de tentatives lui-même n'est pas rejoué), graine bornée, empreinte. Les comparaisons sont **strictes** (`False` n'est pas `0`, `1.0` n'est pas `1`) : un labyrinthe n'a qu'une seule forme canonique valide. `verify_v2` renvoie toujours une liste de problèmes (mécanique inconnue ou absente comprise).
 
+## `connect_dots_v2` (B3-B.3b.2)
+
+Points numérotés à relier, famille `radial`, **géométrie entière exacte**. Paramètres (jeu fermé) : `points` entier de 5 à 24 inclus,
+`closed` booléen strict (polygone fermé P1→…→PN→P1, ou ligne brisée ouverte P1→…→PN), `shape` = `"radial"` (seule famille ouverte ; `star`,
+`moon`, `house`, familles saisonnières, etc. sont refusées). `generate_v2("connect_dots_v2", "syn-…", seed, {"points": 12, "closed": True,
+"shape": "radial"})`. Aucun rendu, aucune donnée éditoriale : le nombre de points de la p.17 réelle n'est ni lu ni deviné.
+
+### Repère et arithmétique
+
+Grille de côté `GRID = 1000`, repère abstrait (axe y vers le haut ; le rendu n'est pas traité ici), marge `MARGIN = 50` : tout point et le centre
+sont dans [50, 950]². **Aucun flottant, aucun epsilon, aucune trigonométrie** dans un critère de validité ni dans le générateur (testé par analyse du
+code) : produits en croix, produits scalaires et comparaisons de fractions d'entiers.
+
+### Critères de validité (tous obligatoires, aucun n'est jamais assoupli)
+
+| # | Critère | Seuil |
+|---|---|---|
+| C1 | deux points quelconques | carré de distance ≥ 60² |
+| C2 | chaque segment tracé | carré de longueur ≥ 60² |
+| C3 | deux segments non adjacents | ni croisement ni contact (segments fermés, extrémités comprises), test exact |
+| C4 | un point et un segment qui ne l'a pas pour extrémité | distance exacte ≥ 40 |
+| C5 | trois points consécutifs (cycliques si `closed`) | non alignés ; deux segments adjacents ne partagent que leur extrémité |
+| C6 | départ et sens canoniques | P1 = point de plus petit (y, x) ; numérotation anti-horaire autour du centre ; aire signée > 0 si `closed` |
+| C7 | numérotation et solution | `n` = 1..N continus ; `order` = [1..N] ; `close_to` = 1 si fermé, `null` sinon |
+
+**Distance point-segment (C4).** Le carré de la distance est une fraction exacte d'entiers : extrémité la plus proche si la projection tombe
+hors du segment, sinon `produit_en_croix² / longueur²`. Le test est `numérateur ≥ 40² × dénominateur`. `measures.min_clearance_sq_floor` publie
+la **partie entière** du minimum, c'est-à-dire ⌊min d²⌋ (convention : troncature d'une fraction positive, jamais d'arrondi). Comme 40² est entier,
+`min d² ≥ 40²` ⇔ `⌊min d²⌋ ≥ 40²` : le plancher publié ne perd rien pour le test ; il n'est qu'une valeur d'information.
+
+**Point P1 et sens (C6), pour les deux modes.** P1 est le point de plus petit `y`, puis de plus petit `x`. La numérotation tourne dans le sens
+anti-horaire autour du centre publié ; en mode fermé l'aire signée (formule du lacet, `twice_area`) doit être strictement positive. Le
+vérificateur contrôle cette convention seul, à partir des points publiés.
+
+**Propriétés `radial` (conservées dans la sortie par `geometry.center`).** Le centre `C` (entier) est publié. Les points sont strictement
+croissants en angle polaire autour de `C` à partir de P1, aucun point ne coïncide avec `C`, et chaque écart angulaire entre points consécutifs,
+**y compris PN→P1 dans les deux modes**, est strictement compris entre 0 et π (`cross(Pi−C, Pi+1−C) > 0`). Un écart exactement égal à π (arête
+passant par le centre) est refusé. Une telle figure est étoilée par rapport à `C` donc simple ; C3 est néanmoins vérifié indépendamment. En
+mode ouvert l'écart PN→P1 n'est pas tracé mais reste contraint : les deux modes partagent la même propriété, c'est un choix de simplicité
+documenté. Le vérificateur contrôle l'ordre angulaire par un pseudo-angle rationnel exact (« diamant » dans [0, 4)), pas par les demi-plans du générateur.
+
+### Génération déterministe et recherche bornée
+
+Candidat `i` (0 ≤ i < `MAX_ATTEMPTS` = 2000) : flux dérivé de (id, graine, forme, points, mode, i). Le centre est tiré dans [450, 550]² ; le périmètre
+d'un carré de demi-côté 400 est découpé en N tranches égales décalées d'une phase aléatoire ; un point est tiré par tranche (échelle 40–100 %), puis
+la liste est tournée pour commencer à P1. Tout est entier. Le premier candidat qui satisfait **tous** les critères est retourné ; sinon `V2Error`
+`UNSATISFIABLE`. Les empreintes de référence (3 combinaisons figées dans les tests) sont identiques sous Python 3.11, 3.12 et 3.13, vérifié à la main lors de la livraison ; la CI du dépôt ne teste que Python 3.11, donc cette égalité inter-versions n'est pas protégée automatiquement contre une régression.
+
+### Benchmark (tentatives nécessaires, 5 à 24 points, deux modes)
+
+1000 graines (0 à 999) × 20 nombres de points × 2 modes = 40 000 figures générées **et** revérifiées par le vérificateur indépendant ; identifiant `syn-bench`. **0 échec.** Pire cas : 59 tentatives sur 2 000 autorisées. Reproductible avec l'API publique (`generate_v2(...).search["attempts"]`).
+
+| points | fermé : moyenne | p95 | p99 | max | ouvert : moyenne | p95 | p99 | max |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 5 | 1.0 | 1 | 2 | 3 | 1.0 | 1 | 2 | 2 |
+| 6 | 1.0 | 1 | 2 | 2 | 1.0 | 1 | 2 | 2 |
+| 7 | 1.1 | 2 | 2 | 4 | 1.0 | 1 | 2 | 3 |
+| 8 | 1.1 | 2 | 2 | 3 | 1.1 | 2 | 2 | 3 |
+| 9 | 1.1 | 2 | 3 | 4 | 1.1 | 2 | 3 | 5 |
+| 10 | 1.2 | 2 | 3 | 3 | 1.1 | 2 | 3 | 4 |
+| 11 | 1.2 | 2 | 3 | 4 | 1.2 | 2 | 3 | 4 |
+| 12 | 1.3 | 3 | 3 | 5 | 1.3 | 2 | 3 | 5 |
+| 13 | 1.4 | 3 | 4 | 7 | 1.4 | 3 | 4 | 6 |
+| 14 | 1.5 | 3 | 4 | 6 | 1.5 | 3 | 5 | 8 |
+| 15 | 1.7 | 4 | 6 | 8 | 1.7 | 4 | 6 | 10 |
+| 16 | 1.8 | 5 | 6 | 9 | 1.9 | 4 | 7 | 10 |
+| 17 | 2.1 | 5 | 7 | 11 | 2.1 | 5 | 7 | 10 |
+| 18 | 2.5 | 6 | 9 | 13 | 2.4 | 6 | 8 | 14 |
+| 19 | 2.8 | 7 | 11 | 21 | 2.9 | 7 | 11 | 18 |
+| 20 | 3.6 | 10 | 14 | 26 | 3.4 | 10 | 14 | 22 |
+| 21 | 4.5 | 12 | 20 | 30 | 4.2 | 11 | 17 | 29 |
+| 22 | 5.3 | 15 | 24 | 30 | 5.4 | 15 | 22 | 35 |
+| 23 | 7.3 | 20 | 30 | 46 | 7.2 | 21 | 30 | 53 |
+| 24 | 9.1 | 29 | 41 | 53 | 9.4 | 26 | 42 | 59 |
+
+La borne 24 est donc praticable sans assouplir aucun des sept critères (moyenne 9 tentatives, p99 ≈ 41–42, max 59).
+
+### Vérification indépendante
+
+`verify_connect_dots_v2` ne réutilise aucune fonction géométrique du générateur : contact de segments par boîtes englobantes et signes
+d'orientation ; dégagement par projection avec `fractions.Fraction` ; ordre angulaire par pseudo-angle rationnel. Il recalcule C1 à C7,
+`measures` (dont `min_clearance_sq_floor`), `search`, `params` et l'empreinte, avec des comparaisons strictes (`True` n'est pas `1`, `1.0` n'est
+pas `1`). `verify_connect_dots_v2` ne lève jamais d'exception sur une géométrie hostile (segment dégénéré compris) ; `diagnose_connect_dots_v2` renvoie une liste vide dès qu'une coordonnée sort de la grille. Un test différentiel compare le verdict du
+générateur et celui du vérificateur sur plusieurs milliers de figures mutées, et chaque seuil est testé à sa frontière exacte (seuil = mesure :
+valide ; seuil = mesure + 1 : refusé).
+
+**Le verdict entier exact fait autorité.** `diagnose_connect_dots_v2` compare en plus avec l'assistant historique `engine.solvers.segments_touch`
+(flottants) à titre de diagnostic secondaire : un désaccord est signalé dans cette liste d'information et ne provoque jamais, à lui seul, le rejet
+d'un enregistrement (testé en forçant l'assistant à répondre l'inverse).
+
+### Sortie canonique
+
+`geometry = {shape, closed, grid, center, points: [{n, x, y}]}` ; `solution = {order, close_to}` ; `measures = {point_count, segment_count,
+min_point_dist_sq, min_segment_sq, min_clearance_sq_floor, twice_area}` (`twice_area` = `null` en mode ouvert) ; `search = {attempts,
+max_attempts}`. Version `b3b3b2-connect-dots-v2-1.0`. Même schéma, même encodage et même empreinte que `maze_v2`.
+
+### Limites propres à `connect_dots_v2`
+
+* **« Ordre unique » n'est pas un théorème d'unicité du dessin.** Il signifie : départ canonique, sens canonique, contour simple. Plusieurs
+  polygones simples passent par le même nuage de points ; on ne prétend pas que celui-ci est le seul.
+* Aucune validation pédagogique humaine ; **aucun niveau de difficulté** n'est modélisé pour cette mécanique.
+* Le dessin obtenu est une figure étoilée tirée au hasard : rien ne garantit qu'elle représente un objet reconnaissable pour un enfant.
+* Pas de rendu : les numéros peuvent se chevaucher visuellement si la taille d'écriture est grande ; les seuils (60 et 40 sur 1000) sont des
+  paramètres techniques, pas un contrôle de lisibilité graphique (issue #15).
+* Une seule famille (`radial`) ; les formes historiques `moon`/`house`/`star` et le croissant C4 restent hors de v2.
+* `search.attempts` n'est pas rejoué indépendamment (dette technique non bloquante, comme pour `maze_v2`). L'empreinte SHA-256 garantit
+  l'intégrité du contenu, **pas** une provenance authentifiée.
+
 ## Sérialisation canonique (schéma `lafractale-mechanics-v2-activity-v1`)
 
 UTF-8 ; JSON avec clés triées lexicographiquement à tous les niveaux, séparateurs `,` et `:` sans espace, `ensure_ascii=False` ; entiers,
@@ -95,4 +203,4 @@ Les objets Python (`V2Activity`, `FrozenDict`) sont profondément immuables, y c
 * Aucune validation pédagogique humaine : les niveaux mesurent la structure du labyrinthe, pas sa difficulté pour un enfant de 4–5 ans.
 * Pas de rendu, pas de lisibilité graphique : les épaisseurs de murs, le masquage et l'occultation relèvent de l'issue #15 et de la QA du moteur.
 * La recherche borne le coût (5 000 tentatives) ; le seul résultat négatif possible est l'échec explicite `UNSATISFIABLE`.
-* Les pages réelles (p.14, p.43) ne sont pas branchées : leurs paramètres éditoriaux (départ, parcours, taille) restent à fixer par les humains.
+* Les pages réelles (p.14, p.43 pour le labyrinthe ; p.17 pour les points) ne sont pas branchées : leurs paramètres éditoriaux (départ, parcours, taille) restent à fixer par les humains.

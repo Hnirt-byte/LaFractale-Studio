@@ -217,11 +217,11 @@ def test_bad_seeds_are_refused(seed):
 
 
 def test_unknown_mechanics_are_refused_and_registry_is_closed():
-    for name in ("maze", "connect_dots_v2", "match_v2", "", None, 3):
+    for name in ("maze", "connect_dots", "match_v2", "", None, 3):
         with pytest.raises(V2Error) as info:
             generate_v2(name, "syn-a", 0, {})
         assert info.value.code == "UNKNOWN_MECHANIC"
-    assert set(MECHANICS_V2) == {"maze_v2"}
+    assert set(MECHANICS_V2) == {"maze_v2", "connect_dots_v2"}
     with pytest.raises(TypeError):
         MECHANICS_V2["x"] = None  # type: ignore[index]
     for bad in ({"mechanic": "nope"}, [], {}, None, {"mechanic": ["maze_v2"]}):
