@@ -33,6 +33,7 @@ from typing import Any, Mapping
 
 from lafractale.mechanics_v2.core import (
     DetRng, V2Activity, V2Error, build_activity, check_activity_id, check_params, check_seed,
+    bounded_repr,
 )
 
 MAZE_V2_MECHANIC = "maze_v2"
@@ -77,13 +78,13 @@ def meets(size: int, level: str, path_length: int, dead_ends: int, decisions: in
 # ---- parameters -------------------------------------------------------------------------------
 def _size(value: Any) -> int:
     if type(value) is not int or not SIZE_MIN <= value <= SIZE_MAX:
-        raise V2Error("BAD_SIZE", f"taille entière attendue entre {SIZE_MIN} et {SIZE_MAX} inclus, reçu {value!r}")
+        raise V2Error("BAD_SIZE", f"taille entière attendue entre {SIZE_MIN} et {SIZE_MAX} inclus, reçu {bounded_repr(value)}")
     return value
 
 
 def _difficulty(value: Any) -> str:
     if type(value) is not str or value not in DIFFICULTIES:
-        raise V2Error("BAD_DIFFICULTY", f"difficulté attendue parmi {DIFFICULTIES}, reçu {value!r}")
+        raise V2Error("BAD_DIFFICULTY", f"difficulté attendue parmi {DIFFICULTIES}, reçu {bounded_repr(value)}")
     return value
 
 

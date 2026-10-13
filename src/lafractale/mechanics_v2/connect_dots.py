@@ -37,6 +37,7 @@ from typing import Any, Mapping
 
 from lafractale.mechanics_v2.core import (
     DetRng, V2Activity, V2Error, build_activity, check_activity_id, check_params, check_seed,
+    bounded_repr,
 )
 
 CONNECT_DOTS_V2_MECHANIC = "connect_dots_v2"
@@ -59,19 +60,19 @@ Point = tuple[int, int]
 # ---- parameters ---------------------------------------------------------------------------------
 def _points(value: Any) -> int:
     if type(value) is not int or not POINTS_MIN <= value <= POINTS_MAX:
-        raise V2Error("BAD_POINTS", f"nombre de points entier attendu entre {POINTS_MIN} et {POINTS_MAX} inclus, reçu {value!r}")
+        raise V2Error("BAD_POINTS", f"nombre de points entier attendu entre {POINTS_MIN} et {POINTS_MAX} inclus, reçu {bounded_repr(value)}")
     return value
 
 
 def _closed(value: Any) -> bool:
     if type(value) is not bool:
-        raise V2Error("BAD_CLOSED", f"booléen strict attendu pour closed, reçu {value!r}")
+        raise V2Error("BAD_CLOSED", f"booléen strict attendu pour closed, reçu {bounded_repr(value)}")
     return value
 
 
 def _shape(value: Any) -> str:
     if type(value) is not str or value not in SHAPES:
-        raise V2Error("BAD_SHAPE", f"forme attendue parmi {SHAPES}, reçu {value!r}")
+        raise V2Error("BAD_SHAPE", f"forme attendue parmi {SHAPES}, reçu {bounded_repr(value)}")
     return value
 
 

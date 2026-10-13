@@ -12,7 +12,9 @@ from typing import Any
 
 from lafractale.engine.solvers import maze_unique_path
 from lafractale.mechanics_v2 import HUMAN_PEDAGOGICAL_VALIDATION, V2_KIND, V2_SCHEMA
-from lafractale.mechanics_v2.core import ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, record_fingerprint
+from lafractale.mechanics_v2.core import (
+    ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, bounded_repr, cap_problems, hostile_shape, keys_summary, record_fingerprint,
+)
 from lafractale.mechanics_v2.maze import (
     ALGORITHMS, DIFFICULTIES, MAX_ATTEMPTS, MAZE_V2_MECHANIC, MAZE_V2_VERSION, SIZE_MAX, SIZE_MIN, meets, minimum_path, span,
 )
@@ -43,17 +45,31 @@ def _cell(value: Any, size: int) -> tuple[int, int] | None:
 
 
 def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
-    """List of problems; empty means the record is a valid, correctly measured maze_v2."""
+    """List of problems; empty means the record is a valid, correctly measured maze_v2. Never raises on an ordinary JSON/dict record.
+
+    A record is first checked for hostile SHAPE (depth, size, types, huge integers: see ``core.hostile_shape``)
+    and refused with an explicit, non-empty list before any other work. Arbitrary Python objects (hostile
+    ``__eq__``/``__hash__``/``__iter__``, mapping subclasses...) are outside the contract: they are refused when
+    detectable by type and otherwise unsupported.
+    """
+    data = record.to_dict() if isinstance(record, V2Activity) else record
+    reason = hostile_shape(data)
+    if reason is not None:
+        return [reason]
+    return cap_problems(_verify_maze(record))
+
+
+def _verify_maze(record: Mapping[str, Any] | V2Activity) -> list[str]:
     data = record.to_dict() if isinstance(record, V2Activity) else record
     if not isinstance(data, Mapping):
         return ["enregistrement : mapping attendu"]
     errors: list[str] = []
     if set(data) != _BODY_KEYS:
-        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {sorted(map(str, data))}"]
+        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {keys_summary(data)}"]
     for key, expected in (("schema", V2_SCHEMA), ("kind", V2_KIND), ("mechanic", MAZE_V2_MECHANIC),
                           ("version", MAZE_V2_VERSION), ("human_pedagogical_validation", HUMAN_PEDAGOGICAL_VALIDATION)):
         if data[key] != expected:
-            errors.append(f"{key} : {expected!r} attendu, reçu {data[key]!r}")
+            errors.append(f"{key} : {expected!r} attendu, reçu {bounded_repr(data[key])}")
     if data["production_authorized"] is not False:
         errors.append("production_authorized doit valoir false")
     if not isinstance(data["activity_id"], str) or not ACTIVITY_ID.match(data["activity_id"]):
@@ -147,7 +163,7 @@ def verify_maze_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     expected = {"path_length": steps, "dead_ends": dead_ends, "decisions": decisions,
                 "minimum_path_length": minimum_path(size), "span": span(size)}
     if not _same(dict(measures), expected):
-        errors.append(f"measures : valeurs recalculées {expected}, reçues {dict(measures)}")
+        errors.append(f"measures : valeurs recalculées {expected}, reçues {bounded_repr(dict(measures))}")
     if not meets(size, level, steps, dead_ends, decisions):
         errors.append(f"difficulté : le labyrinthe ne satisfait pas toutes les contraintes du niveau {level} "
                       f"(L={steps}, D={dead_ends}, B={decisions})")

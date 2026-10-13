@@ -11,6 +11,11 @@
 
 # Changelog
 
+## [B3-B.3c.1] - Durcissement des vérificateurs v2
+- Garde de forme itérative (`core.hostile_shape`), rendu borné des valeurs d'entrée (`core.bounded_repr`) et plafond de 100 problèmes par rapport, appliqués à `maze_v2`, `connect_dots_v2`, `match_v2`, au registre et aux validateurs de paramètres ; la capture générale de `verify_match_v2` est supprimée.
+- Les entrées JSON/dict hostiles (imbrication, entiers démesurés, types inattendus, chaînes géantes) donnent une liste d'erreurs non vide au lieu de `RecursionError`/`ValueError` ; `generate_v2` ne lève plus que `V2Error`.
+- Aucune règle géométrique, aucun algorithme, aucun paramètre, aucun code d'erreur `V2Error`, aucune sérialisation ni empreinte modifiés (254 empreintes de référence identiques). Voir `docs/B3B3C1_HARDENING_AND_DEBT.md`.
+
 ## [B3-B.2] - Lecteur en lecture seule du scénario B
 - Nouveau paquet isolé `lafractale.scenario_b` : analyse des sources B3-A.3/B3-A.4 actives, capacités réelles du moteur, blocages éditoriaux, rapport JSON/Markdown déterministe et synthèse des développements (voir `docs/B3B2_SCENARIO_B_READER.md`).
 - Aucun fichier éditorial, asset, générateur ou moteur de production modifié ; aucune génération PDF ; statuts permanents inchangés.

@@ -281,6 +281,8 @@ Les objets Python (`V2Activity`, `FrozenDict`) sont profondément immuables, y c
 
 ## Limites
 
+* Robustesse aux entrées hostiles et suivi des dettes techniques B3-B.3b : voir `docs/B3B3C1_HARDENING_AND_DEBT.md` (B3-B.3c.1).
+
 * Aucune validation pédagogique humaine : les niveaux mesurent la structure du labyrinthe, pas sa difficulté pour un enfant de 4–5 ans.
 * Pas de rendu, pas de lisibilité graphique : les épaisseurs de murs, le masquage et l'occultation relèvent de l'issue #15 et de la QA du moteur.
 * La recherche borne le coût (5 000 tentatives) ; le seul résultat négatif possible est l'échec explicite `UNSATISFIABLE`.
