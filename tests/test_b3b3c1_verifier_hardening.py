@@ -281,15 +281,38 @@ def test_hostile_values_in_every_top_level_field_at_once(mechanic):
             assert_refusal(entry(record), f"{mechanic} all fields {name}")
 
 
-@pytest.mark.parametrize("mechanic", sorted(PARAMS))
-def test_oversized_but_ordinary_record_is_refused_with_a_bounded_report(mechanic):
-    record = base_record(mechanic)
-    field = {"maze_v2": ("geometry", "open_edges"), "connect_dots_v2": ("geometry", "points"),
-             "match_v2": ("geometry", "left")}[mechanic]
-    record[field[0]][field[1]] = [[0, 1]] * 3000  # within the node budget, every entry invalid
+def test_problem_report_is_capped_when_the_shape_guard_passes():
+    """1 000 invalid passages stay under the node budget: only ``cap_problems`` bounds the report (100 + 1 lines)."""
+    record = base_record("maze_v2")
+    record["geometry"]["open_edges"] = [[0, 1]] * 1000
     problems = verify_v2(record)
+    assert len(problems) == MAX_REPORTED_PROBLEMS + 1 and "autre(s) problème(s)" in problems[-1]
     assert_refusal(problems)
-    assert len(problems) <= MAX_REPORTED_PROBLEMS + 1
+
+
+@pytest.mark.parametrize("mechanic", sorted(PARAMS))
+def test_oversized_ordinary_record_is_refused_by_the_shape_guard(mechanic):
+    record = base_record(mechanic)
+    field = {"maze_v2": "open_edges", "connect_dots_v2": "points", "match_v2": "left"}[mechanic]
+    record["geometry"][field] = [[0, 1]] * 3000  # 9 001 nodes: over the budget
+    assert verify_v2(record) == ["enregistrement hostile : plus de 4096 éléments"]
+
+
+def test_shape_guard_refuses_a_huge_container_before_walking_it():
+    assert hostile_shape([0] * 3_000_000) is not None
+    assert hostile_shape({str(i): 0 for i in range(5000)}) is not None
+    assert hostile_shape([0] * 4000) is None  # 4 001 nodes: still inside the budget
+
+
+def test_shape_guard_thresholds_just_below_the_limits_are_accepted():
+    assert hostile_shape({"a": 2 ** 4095, "b": -(2 ** 4095), "c": "x" * 256, "d" * 64: 1}) is None
+    assert hostile_shape({"a": 1 << 4096}) is not None
+    assert hostile_shape({"a": "x" * 257}) is not None and hostile_shape({"k" * 65: 1}) is not None
+    assert hostile_shape(deep_list(7)) is None and hostile_shape(deep_list(9)) is not None
+
+
+def test_keys_summary_is_bounded():
+    assert core.keys_summary({str(i): 0 for i in range(40)}).endswith("(+28)")
 
 
 @pytest.mark.parametrize("mechanic", sorted(PARAMS))

@@ -248,7 +248,7 @@ def diagnose_connect_dots_v2(record: Mapping[str, Any] | V2Activity) -> list[str
         closed = data["geometry"]["closed"]
     except (KeyError, TypeError):
         return []
-    if points is None or type(closed) is not bool or len(points) < 3:
+    if points is None or type(closed) is not bool or not 3 <= len(points) <= POINTS_MAX:
         return []
     if any(not 0 <= v <= GRID for point in points for v in point):
         return []  # outside the grid: verify_connect_dots_v2 reports it; no float conversion of hostile integers

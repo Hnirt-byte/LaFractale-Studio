@@ -24,7 +24,7 @@ code d'erreur `V2Error`. Il ajoute une validation préalable de la **forme** des
 1. **`core.hostile_shape(data)`** — parcours **itératif** (aucune récursion donc aucun `RecursionError`), appelé en premier par chacun des
    trois vérificateurs. Il refuse, en une seule ligne d'erreur explicite et sans autre travail :
    * plus de 8 niveaux d'imbrication (`MAX_RECORD_DEPTH`) — un enregistrement valide en compte 6 au plus (mesuré) ;
-   * plus de 4 096 éléments visités (`MAX_RECORD_NODES`) — le plus grand enregistrement valide (labyrinthe 12×12) en compte 1 297 (mesuré), testé avec une marge d'un facteur 2 ; une référence partagée ou circulaire est comptée à chaque visite, donc elle ne boucle pas et ne se démultiplie pas ;
+   * plus de 4 096 éléments visités (`MAX_RECORD_NODES`) — le plus grand enregistrement valide (labyrinthe 12×12) en compte 1 381 au plus sur 40 graines × 3 niveaux (mesuré en revue), soit une marge supérieure à 2,9 ; le test garantit un facteur 2 sur la graine 0 ; une référence partagée ou circulaire est comptée à chaque visite, donc elle ne boucle pas et ne se démultiplie pas ;
    * clé non textuelle ou de plus de 64 caractères ; chaîne de plus de 256 caractères ;
    * entier de plus de 4 096 bits (`MAX_RECORD_INT_BITS`, environ 1 230 chiffres, sous la limite de conversion entier↔texte de 4 300 chiffres de CPython) ;
    * tout type de feuille autre que `None`, `bool`, `int`, `float`, `str` exacts ; tout conteneur autre que `dict` / `list` exacts (le premier niveau peut aussi être un `FrozenDict` ou un `MappingProxyType`).
@@ -66,7 +66,7 @@ et 39 messages longs côté `generate_v2`. **Aucune acceptation à tort n'a ét�
 * Pour chacune des trois mécaniques : une mutation à la fois de **chaque** champ de l'enregistrement (premier niveau, imbriqués, trois premiers éléments de chaque liste) par 29 valeurs hostiles (entiers de 5 000 chiffres et de 4 097 bits, listes et dictionnaires imbriqués 100 000 fois, 9 niveaux, NaN, ±∞, flottants, `None`, chaînes de 100 000 caractères, `bytes`, `set`, `tuple`, booléens, listes de 200 000 éléments, sous-classes d'`int`/`str`/`dict` dont `__eq__`, `__repr__` ou `items` lèvent, objets dont toutes les méthodes lèvent, liste circulaire, structure partagée à 2⁴⁰ visites, clés entières…) ; toutes refusées par `verify_v2` **et** par le vérificateur dédié : liste non vide de `str`, au plus 101 lignes, au plus 20 000 caractères en tout.
 * Suppression de chaque clé, ajout d'une clé en trop à chaque niveau, valeurs hostiles dans tous les champs à la fois, valeurs hostiles en tête d'enregistrement : refus.
 * `verify_v2` renvoie une liste pour toute entrée, y compris non mapping et mécanique hostile ; le nom hostile n'est jamais recopié.
-* `generate_v2` : chaque argument hostile (mécanique, identifiant, graine, mapping de paramètres, chaque valeur de paramètre, nom de paramètre inconnu) provoque un `V2Error` à code non vide et message ≤ 400 caractères ; les 14 codes d'erreur existants sont vérifiés inchangés.
+* `generate_v2` : chaque argument hostile (mécanique, identifiant, graine, mapping de paramètres, chaque valeur de paramètre, nom de paramètre inconnu) provoque un `V2Error` à code non vide et message ≤ 400 caractères ; 13 codes d'erreur existants (14 cas) sont vérifiés inchangés ; `BAD_PARAMS`, `BAD_COMBINATION`, `UNSATISFIABLE` et `SELF_CHECK_FAILED` ne sont pas couverts par ce test.
 * `loads_record` refuse les octets hostiles (imbrication 100 000, entier de 5 000 chiffres, UTF-8 invalide, NaN, clé dupliquée) par `V2Error`.
 * **Non-régression** : 254 combinaisons (labyrinthes 3..12 × 3 niveaux × 3 graines, points 5..24 × 2 modes × 2 graines, associations 2..8 × 2 relations × 3 familles × 2 graines, y compris les refus) capturées sur `2f5a55e` : empreintes et codes de refus **identiques** (fixture `tests/fixtures/b3b3c1_reference_fingerprints.json`). Tous les enregistrements valides générés des tests sont acceptés par la garde, avec une marge d'un facteur 2 sur le plafond d'éléments.
 * Discipline de code vérifiée par analyse syntaxique : aucune capture générale dans les vérificateurs, aucun rendu textuel non borné d'une valeur d'entrée, aucun couplage éditorial dans le socle.
@@ -77,13 +77,14 @@ et 39 messages longs côté `generate_v2`. **Aucune acceptation à tort n'a ét�
 * Pas de borne de **temps** mesurée en environnement contraint : le coût est borné par construction (4 096 éléments, tailles de grille et nombre de points plafonnés), mais aucun test de durée limite n'existe.
 * Les objets Python arbitraires (§1) : aucune garantie au-delà du refus par type exact.
 * La limite d'entier de 4 096 bits suppose la limite de conversion par défaut de CPython (4 300 chiffres) : un hôte qui l'augmente ou la désactive (`sys.set_int_max_str_digits`) ne rend pas le code incorrect (la garde borne déjà les entiers), mais la justification de ce seuil ne vaut plus.
-* Sous Python 3.11 et 3.12 : le lot a été exécuté sous Python 3.13 seulement ; la CI ne teste que 3.11 (voir dette n°4). La garde n'emploie que des constructions antérieures à 3.11.
+* Python : la suite pytest a été exécutée sous 3.13 seulement ; la CI ne teste que 3.11 (voir dette n°4). Les scripts de balayage et de contre-exemples de la revue ont de plus été rejoués sous 3.11 et 3.12 sans anomalie (hors suite pytest, non conservés dans le dépôt).
 
 ## 6. Limites toujours présentes
 
 * Comportement changé et assumé : un enregistrement dont le premier niveau est une **sous-classe** de `dict` (par exemple `OrderedDict`) ou un autre `Mapping` personnalisé est désormais refusé (« type non pris en charge ») alors que les vérificateurs l'acceptaient s'il se comportait comme un `dict`. Les enregistrements issus de `json.loads`, de `V2Activity.to_dict()`, de `FrozenDict` et de `MappingProxyType` sont inchangés. Les valeurs imbriquées de type `tuple` étaient déjà refusées par l'égalité stricte.
 * Une chaîne de plus de 256 caractères ou une clé de plus de 64 caractères dans un enregistrement est désormais refusée d'emblée, même si le champ concerné aurait de toute façon été refusé ensuite (les enregistrements valides n'en contiennent pas).
 * Les messages d'erreur sont du texte libre en français : ils peuvent évoluer ; seuls les codes `V2Error` sont stables.
+* Le rendu de `keys_summary` (12 clés) et de `bounded_repr(measures)` (320 caractères) perd du détail par rapport à l'ancien rendu complet ; seul le texte change.
 * Le plafond de 100 problèmes masque les suivants (compte indiqué) ; un enregistrement invalide reste refusé quel que soit le plafond.
 
 ## 7. Dettes techniques B3-B.3b — suivi

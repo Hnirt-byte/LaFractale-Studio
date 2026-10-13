@@ -94,6 +94,9 @@ def hostile_shape(data: Any) -> str | None:
         if depth > MAX_RECORD_DEPTH:
             return f"enregistrement hostile : imbrication supérieure à {MAX_RECORD_DEPTH} niveaux"
         kind = type(value)
+        if kind is dict or (depth == 0 and kind in _TOP_LEVEL_MAPPINGS) or kind is list:
+            if nodes + len(stack) + len(value) > MAX_RECORD_NODES:  # refuse BEFORE pushing a huge container
+                return f"enregistrement hostile : plus de {MAX_RECORD_NODES} éléments"
         if kind is dict or (depth == 0 and kind in _TOP_LEVEL_MAPPINGS):
             for key, item in value.items():
                 if type(key) is not str:
