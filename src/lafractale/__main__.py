@@ -31,8 +31,23 @@ def main(argv: list[str] | None = None) -> int:
     p_qa.add_argument("--pip-placement", help="Politique C2 opt-in de placement de Pip (après routage C1)")
     p_qa.add_argument("--editorial-profile", help="Profil éditorial opt-in C4 (après routage C1 + placement C2 V2)")
     p_qa.add_argument("--approvals-sha256", help="Empreinte de registre approuvée hors sorties")
+    p_prev=subs.add_parser("preview",help="Aperçu PDF de 56 pages du livre (non destiné à la publication)")
+    p_prev.add_argument("book_dir",type=Path,help="Dossier du livre (book.yaml + pages.csv)")
+    p_prev.add_argument("--out",type=Path,default=Path("dist/book_preview"))
+    p_prev.add_argument("--seed",type=int,default=2026)
+    p_prev.add_argument("--overwrite",action="store_true",help="Remplacer explicitement un aperçu existant")
     args=parser.parse_args(argv)
     try:
+        if args.cmd=="preview":
+            from lafractale.book.pages import BookError
+            from lafractale.book.preview import build_preview
+            try:
+                s=build_preview(args.book_dir,args.out,seed=args.seed,overwrite=args.overwrite)
+            except BookError as exc:
+                raise ConfigError(str(exc)) from exc
+            print(f"APERÇU CRÉÉ : {args.out} | {s['pages']} pages | {s['jouables']} jouables | "
+                  f"{s['provisoires']} provisoires | NON DESTINÉ À LA PUBLICATION")
+            return 0
         if args.cmd=="qa":
             errors=audit_output(args.out,book=load_book(args.book,require_plan=False),
                 illustration_id=args.illustration_id, illustration_routing=args.illustration_routing,
