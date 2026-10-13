@@ -43,6 +43,7 @@ from typing import Any, Mapping
 
 from lafractale.mechanics_v2.core import (
     DetRng, V2Activity, V2Error, build_activity, check_activity_id, check_params, check_seed,
+    bounded_repr,
 )
 
 MATCH_V2_MECHANIC = "match_v2"
@@ -125,19 +126,19 @@ def check_combination(pairs: int, relation: str, family: str) -> None:
 # ---- parameters ------------------------------------------------------------------------------------
 def _pairs(value: Any) -> int:
     if type(value) is not int or not PAIRS_MIN <= value <= PAIRS_MAX:
-        raise V2Error("BAD_PAIRS", f"nombre de paires entier attendu entre {PAIRS_MIN} et {PAIRS_MAX} inclus, reçu {value!r}")
+        raise V2Error("BAD_PAIRS", f"nombre de paires entier attendu entre {PAIRS_MIN} et {PAIRS_MAX} inclus, reçu {bounded_repr(value)}")
     return value
 
 
 def _relation(value: Any) -> str:
     if type(value) is not str or value not in RELATIONS:
-        raise V2Error("BAD_RELATION", f"relation attendue parmi {RELATIONS}, reçu {value!r}")
+        raise V2Error("BAD_RELATION", f"relation attendue parmi {RELATIONS}, reçu {bounded_repr(value)}")
     return value
 
 
 def _family(value: Any) -> str:
     if type(value) is not str or value not in FAMILIES:
-        raise V2Error("BAD_FAMILY", f"famille attendue parmi {FAMILIES}, reçu {value!r}")
+        raise V2Error("BAD_FAMILY", f"famille attendue parmi {FAMILIES}, reçu {bounded_repr(value)}")
     return value
 
 

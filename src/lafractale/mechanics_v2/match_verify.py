@@ -21,7 +21,9 @@ from fractions import Fraction
 from typing import Any
 
 from lafractale.mechanics_v2 import HUMAN_PEDAGOGICAL_VALIDATION, V2_KIND, V2_SCHEMA
-from lafractale.mechanics_v2.core import ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, record_fingerprint
+from lafractale.mechanics_v2.core import (
+    ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, bounded_repr, cap_problems, hostile_shape, keys_summary, record_fingerprint,
+)
 from lafractale.mechanics_v2.match import (
     AREA_RATIO_GAP_MIN_PPM, DOT_BORDER, DOTS, FAMILIES, FRAME, GRID, LEFT_ANCHOR_X, LEFT_X, MARGIN, MATCH_V2_MECHANIC,
     MATCH_V2_VERSION, MAX_ATTEMPTS, MIN_BOX_GAP, MIN_DOT_SEP_SQ, PAIRS_MAX, PAIRS_MIN, POLYGONS, RELATIONS,
@@ -127,17 +129,17 @@ def _table(kind: str, order: int):
     return (POLYGONS if kind == "polygon" else STARS).get(order)
 
 
-def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
+def _verify_match(record: Mapping[str, Any] | V2Activity) -> list[str]:
     data = record.to_dict() if isinstance(record, V2Activity) else record
     if not isinstance(data, Mapping):
         return ["enregistrement : mapping attendu"]
     if set(data) != _BODY_KEYS:
-        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {sorted(map(str, data))}"]
+        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {keys_summary(data)}"]
     errors: list[str] = []
     for key, expected in (("schema", V2_SCHEMA), ("kind", V2_KIND), ("mechanic", MATCH_V2_MECHANIC),
                           ("version", MATCH_V2_VERSION), ("human_pedagogical_validation", HUMAN_PEDAGOGICAL_VALIDATION)):
         if data[key] != expected:
-            errors.append(f"{key} : {expected!r} attendu, reçu {data[key]!r}")
+            errors.append(f"{key} : {expected!r} attendu, reçu {bounded_repr(data[key])}")
     if data["production_authorized"] is not False:
         errors.append("production_authorized doit valoir false")
     if not isinstance(data["activity_id"], str) or not ACTIVITY_ID.match(data["activity_id"]):
@@ -212,7 +214,7 @@ def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
                 errors.append(f"M4 : gauche {i} : classe {cls} hors de la famille {family}")
             # M8 -- label consistency (informative field)
             if not _same(left_labels[i], f"{cls[0]}-{cls[1]}"):
-                errors.append(f"M8 : gauche {i} : étiquette {left_labels[i]!r} incohérente avec la signature {cls}")
+                errors.append(f"M8 : gauche {i} : étiquette {bounded_repr(left_labels[i])} incohérente avec la signature {cls}")
     # M2 -- distinct signatures inside the left column
     known = [c for c in classes if c is not None]
     if len(set(known)) != len(known):
@@ -230,12 +232,12 @@ def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
                 if table is None or [list(p) for p in pts] != [list(p) for p in table]:
                     errors.append(f"M4 : droite {j} : contour différent de la table fermée {cls}")
                 if not _same(right_labels[j], f"{cls[0]}-{cls[1]}"):
-                    errors.append(f"M8 : droite {j} : étiquette {right_labels[j]!r} incohérente avec la signature {cls}")
+                    errors.append(f"M8 : droite {j} : étiquette {bounded_repr(right_labels[j])} incohérente avec la signature {cls}")
         else:
             right_classes.append(None)
             k = len(pts)
             if not _same(right_labels[j], f"dots-{k}"):
-                errors.append(f"M8 : droite {j} : étiquette {right_labels[j]!r} incohérente avec {k} points")
+                errors.append(f"M8 : droite {j} : étiquette {bounded_repr(right_labels[j])} incohérente avec {k} points")
             if k not in DOTS or [list(p) for p in pts] != [list(p) for p in DOTS[k]]:
                 errors.append(f"M9 : droite {j} : motif de points différent des tables fermées")
             if any(not (DOT_BORDER <= x <= FRAME - DOT_BORDER and DOT_BORDER <= y <= FRAME - DOT_BORDER) for x, y in pts):
@@ -314,7 +316,7 @@ def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
         expected = {"pairs": pairs, "fixed_points": sum(1 for i, j in enumerate(perm) if i == j),
                     "crossings": inversions, "min_area_ratio_gap_ppm": gap_ppm}
         if set(measures) != _MEASURE_KEYS or not _same(dict(measures), expected):
-            errors.append(f"measures : valeurs recalculées {expected}, reçues {dict(measures)}")
+            errors.append(f"measures : valeurs recalculées {expected}, reçues {bounded_repr(dict(measures))}")
     if set(search) != {"attempts", "max_attempts"} or not _same(search["max_attempts"], MAX_ATTEMPTS) \
             or not _int(search["attempts"]) or not 1 <= search["attempts"] <= MAX_ATTEMPTS:
         errors.append("search : attempts (1..max) et max_attempts requis")
@@ -327,8 +329,13 @@ def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
 
 
 def verify_match_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
-    """List of problems; empty means a valid, correctly measured match_v2 record. Never raises."""
-    try:
-        return _verify(record)
-    except (RecursionError, ValueError, OverflowError):  # hostile depth or huge integers in a published field
-        return ["enregistrement : contenu hostile refusé (imbrication ou entier démesuré)"]
+    """List of problems; empty means a valid, correctly measured match_v2 record. Never raises on an ordinary JSON/dict record.
+
+    Hostile shape (depth, size, types, huge integers: see ``core.hostile_shape``) is refused up front with an
+    explicit list; arbitrary Python objects are outside the contract (see ``verify_maze_v2``).
+    """
+    data = record.to_dict() if isinstance(record, V2Activity) else record
+    reason = hostile_shape(data)
+    if reason is not None:
+        return [reason]
+    return cap_problems(_verify_match(record))

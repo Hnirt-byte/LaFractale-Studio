@@ -21,7 +21,9 @@ from typing import Any
 
 from lafractale.engine.solvers import segments_touch
 from lafractale.mechanics_v2 import HUMAN_PEDAGOGICAL_VALIDATION, V2_KIND, V2_SCHEMA
-from lafractale.mechanics_v2.core import ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, record_fingerprint
+from lafractale.mechanics_v2.core import (
+    ACTIVITY_ID, MAX_SEED, V2Activity, V2Error, bounded_repr, cap_problems, hostile_shape, keys_summary, record_fingerprint,
+)
 from lafractale.mechanics_v2.connect_dots import (
     CONNECT_DOTS_V2_MECHANIC, CONNECT_DOTS_V2_VERSION, GRID, MARGIN, MAX_ATTEMPTS, MIN_CLEARANCE_SQ,
     MIN_POINT_DIST_SQ, MIN_SEGMENT_SQ, POINTS_MAX, POINTS_MIN, SHAPES,
@@ -96,17 +98,31 @@ def _parse_points(raw: Any) -> list[tuple[int, int]] | None:
 
 
 def verify_connect_dots_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
-    """List of problems; empty means a valid, correctly measured connect_dots_v2 record."""
+    """List of problems; empty means a valid, correctly measured connect_dots_v2 record. Never raises on an ordinary JSON/dict record.
+
+    A record is first checked for hostile SHAPE (depth, size, types, huge integers: see ``core.hostile_shape``)
+    and refused with an explicit, non-empty list before any other work. Arbitrary Python objects (hostile
+    ``__eq__``/``__hash__``/``__iter__``, mapping subclasses...) are outside the contract: they are refused when
+    detectable by type and otherwise unsupported.
+    """
+    data = record.to_dict() if isinstance(record, V2Activity) else record
+    reason = hostile_shape(data)
+    if reason is not None:
+        return [reason]
+    return cap_problems(_verify_connect_dots(record))
+
+
+def _verify_connect_dots(record: Mapping[str, Any] | V2Activity) -> list[str]:
     data = record.to_dict() if isinstance(record, V2Activity) else record
     if not isinstance(data, Mapping):
         return ["enregistrement : mapping attendu"]
     if set(data) != _BODY_KEYS:
-        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {sorted(map(str, data))}"]
+        return [f"clés de l'enregistrement : attendu {sorted(_BODY_KEYS)}, reçu {keys_summary(data)}"]
     errors: list[str] = []
     for key, expected in (("schema", V2_SCHEMA), ("kind", V2_KIND), ("mechanic", CONNECT_DOTS_V2_MECHANIC),
                           ("version", CONNECT_DOTS_V2_VERSION), ("human_pedagogical_validation", HUMAN_PEDAGOGICAL_VALIDATION)):
         if data[key] != expected:
-            errors.append(f"{key} : {expected!r} attendu, reçu {data[key]!r}")
+            errors.append(f"{key} : {expected!r} attendu, reçu {bounded_repr(data[key])}")
     if data["production_authorized"] is not False:
         errors.append("production_authorized doit valoir false")
     if not isinstance(data["activity_id"], str) or not ACTIVITY_ID.match(data["activity_id"]):
@@ -206,7 +222,7 @@ def verify_connect_dots_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
                     "min_segment_sq": shortest, "min_clearance_sq_floor": nearest.numerator // nearest.denominator,
                     "twice_area": twice_area}
         if set(measures) != _MEASURE_KEYS or not _same(dict(measures), expected):
-            errors.append(f"measures : valeurs recalculées {expected}, reçues {dict(measures)}")
+            errors.append(f"measures : valeurs recalculées {expected}, reçues {bounded_repr(dict(measures))}")
     if set(search) != {"attempts", "max_attempts"} or not _same(search["max_attempts"], MAX_ATTEMPTS) \
             or not _int(search["attempts"]) or not 1 <= search["attempts"] <= MAX_ATTEMPTS:
         errors.append("search : attempts (1..max) et max_attempts requis")
@@ -225,12 +241,14 @@ def diagnose_connect_dots_v2(record: Mapping[str, Any] | V2Activity) -> list[str
     Returns an empty list when the record cannot be parsed (``verify_connect_dots_v2`` reports that).
     """
     data = record.to_dict() if isinstance(record, V2Activity) else record
+    if hostile_shape(data) is not None:
+        return []  # reported by verify_connect_dots_v2
     try:
         points = _parse_points(data["geometry"]["points"])
         closed = data["geometry"]["closed"]
     except (KeyError, TypeError):
         return []
-    if points is None or type(closed) is not bool or len(points) < 3:
+    if points is None or type(closed) is not bool or not 3 <= len(points) <= POINTS_MAX:
         return []
     if any(not 0 <= v <= GRID for point in points for v in point):
         return []  # outside the grid: verify_connect_dots_v2 reports it; no float conversion of hostile integers
