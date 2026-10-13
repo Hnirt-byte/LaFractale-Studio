@@ -12,6 +12,8 @@ from lafractale.mechanics_v2.connect_dots import (
 from lafractale.mechanics_v2.connect_dots_verify import verify_connect_dots_v2
 from lafractale.mechanics_v2.core import V2Activity, V2Error
 from lafractale.mechanics_v2.maze import MAZE_V2_MECHANIC, MAZE_V2_VERSION, PARAM_SPEC as MAZE_PARAMS, generate_maze_v2
+from lafractale.mechanics_v2.match import MATCH_V2_MECHANIC, MATCH_V2_VERSION, PARAM_SPEC as MATCH_PARAMS, generate_match_v2
+from lafractale.mechanics_v2.match_verify import verify_match_v2
 from lafractale.mechanics_v2.maze_verify import verify_maze_v2
 
 
@@ -30,6 +32,8 @@ MECHANICS_V2: Mapping[str, MechanicV2] = MappingProxyType({
     CONNECT_DOTS_V2_MECHANIC: MechanicV2(CONNECT_DOTS_V2_MECHANIC, CONNECT_DOTS_V2_VERSION,
                                          MappingProxyType(dict(CONNECT_DOTS_PARAMS)),
                                          generate_connect_dots_v2, verify_connect_dots_v2),
+    MATCH_V2_MECHANIC: MechanicV2(MATCH_V2_MECHANIC, MATCH_V2_VERSION, MappingProxyType(dict(MATCH_PARAMS)),
+                                  generate_match_v2, verify_match_v2),
 })
 
 
@@ -53,5 +57,6 @@ def verify_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     """Always returns the list of problems (an unknown or missing mechanic is a problem, not an exception)."""
     name = record.mechanic if isinstance(record, V2Activity) else (record.get("mechanic") if isinstance(record, Mapping) else None)
     if type(name) is not str or name not in MECHANICS_V2:
-        return [f"mécanique v2 inconnue ou absente : {name!r}"]
+        return [f"mécanique v2 inconnue ou absente : {name!r}" if type(name) is str or name is None else
+                f"mécanique v2 inconnue ou absente (type {type(name).__name__})"]
     return MECHANICS_V2[name].verify(record)
