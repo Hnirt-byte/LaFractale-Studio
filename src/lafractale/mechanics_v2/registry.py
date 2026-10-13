@@ -57,5 +57,6 @@ def verify_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     """Always returns the list of problems (an unknown or missing mechanic is a problem, not an exception)."""
     name = record.mechanic if isinstance(record, V2Activity) else (record.get("mechanic") if isinstance(record, Mapping) else None)
     if type(name) is not str or name not in MECHANICS_V2:
-        return [f"mécanique v2 inconnue ou absente : {name!r}"]
+        return [f"mécanique v2 inconnue ou absente : {name!r}" if type(name) is str or name is None else
+                f"mécanique v2 inconnue ou absente (type {type(name).__name__})"]
     return MECHANICS_V2[name].verify(record)

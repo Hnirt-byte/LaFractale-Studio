@@ -1311,3 +1311,30 @@ def test_deeply_nested_hostile_fields_give_errors_not_exceptions(sample):
         target[path[-1]] = deep
         assert verify_match_v2(data), path
     assert verify_v2(data)
+
+
+def test_huge_integers_and_hostile_values_in_any_published_field_give_errors(sample):
+    huge, deep = 10 ** 5000, []
+    for _ in range(100_000):
+        deep = [deep]
+    base = sample.to_dict()
+
+    def paths(node, prefix=()):
+        yield prefix
+        if isinstance(node, dict):
+            for k, v in node.items():
+                yield from paths(v, prefix + (k,))
+        elif isinstance(node, list):
+            for i, v in enumerate(node[:2]):
+                yield from paths(v, prefix + (i,))
+
+    for path in [p for p in paths(base) if p]:
+        for value in (huge, -huge, deep, float("inf"), None, object()):
+            data = copy.deepcopy(base)
+            target = data
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = value
+            assert isinstance(verify_match_v2(data), list) and verify_match_v2(data), (path, type(value))
+            assert verify_v2(data), (path, type(value))
+    assert verify_v2({"mechanic": deep}) and verify_v2({"mechanic": huge})

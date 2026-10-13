@@ -330,5 +330,5 @@ def verify_match_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     """List of problems; empty means a valid, correctly measured match_v2 record. Never raises."""
     try:
         return _verify(record)
-    except RecursionError:  # hostile nesting depth in a published field
-        return ["enregistrement : imbrication excessive refusée"]
+    except (RecursionError, ValueError, OverflowError):  # hostile depth or huge integers in a published field
+        return ["enregistrement : contenu hostile refusé (imbrication ou entier démesuré)"]
