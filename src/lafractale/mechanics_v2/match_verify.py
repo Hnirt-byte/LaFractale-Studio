@@ -127,8 +127,7 @@ def _table(kind: str, order: int):
     return (POLYGONS if kind == "polygon" else STARS).get(order)
 
 
-def verify_match_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
-    """List of problems; empty means a valid, correctly measured match_v2 record."""
+def _verify(record: Mapping[str, Any] | V2Activity) -> list[str]:
     data = record.to_dict() if isinstance(record, V2Activity) else record
     if not isinstance(data, Mapping):
         return ["enregistrement : mapping attendu"]
@@ -325,3 +324,11 @@ def verify_match_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
     except (V2Error, ValueError, TypeError) as exc:
         errors.append(f"fingerprint : contenu non canonique ({exc})")
     return errors
+
+
+def verify_match_v2(record: Mapping[str, Any] | V2Activity) -> list[str]:
+    """List of problems; empty means a valid, correctly measured match_v2 record. Never raises."""
+    try:
+        return _verify(record)
+    except RecursionError:  # hostile nesting depth in a published field
+        return ["enregistrement : imbrication excessive refusée"]

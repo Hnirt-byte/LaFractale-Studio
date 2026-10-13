@@ -514,6 +514,7 @@ def test_geometry_decides_the_pairing_even_when_labels_agree_with_a_wrong_pairin
         r[a]["label"], r[b]["label"] = r[b]["label"], r[a]["label"]
     errors = errors_of(tampered(base, swap))
     assert has(errors, "M3") and "solution" in " ".join(e for e in errors if e.startswith("M3"))
+    assert not has(errors, "M4") and not has(errors, "M8")  # both symbols are valid table members: only the pairing is wrong
     assert perm == base["solution"]["left_to_right"]
 
 
@@ -1295,3 +1296,18 @@ def test_one_sided_uniqueness_reports_the_bilateral_rule_itself():
         l[1]["vertices"] = [list(p) for p in l[0]["vertices"]]
         l[1]["label"] = l[0]["label"]
     assert _msgs(tampered(base, one_for_two), "bilatéralement")
+
+
+def test_deeply_nested_hostile_fields_give_errors_not_exceptions(sample):
+    deep: list = []
+    for _ in range(100_000):
+        deep = [deep]
+    for path in (("geometry", "left", 0, "label"), ("measures", "x"), ("geometry", "anchors"), ("search", "attempts"),
+                 ("solution", "left_to_right"), ("params", "pairs"), ("geometry", "right", 1, "origin")):
+        data = sample.to_dict()
+        target = data
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = deep
+        assert verify_match_v2(data), path
+    assert verify_v2(data)
